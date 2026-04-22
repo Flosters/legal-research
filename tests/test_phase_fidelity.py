@@ -70,6 +70,12 @@ PHASES = [
 
 
 def _extract_section(src: str, start_re: str) -> list[str]:
+    """Return lines belonging to the phase, stripped of checkpoint infrastructure.
+
+    Stops at either the next `## Phase ` heading or a `### Checkpoint N` block
+    (the latter is halt-tied infrastructure that the hybrid replaces with
+    state.json writes — see Task 15).
+    """
     lines = src.splitlines()
     start = None
     for i, ln in enumerate(lines):
@@ -77,9 +83,10 @@ def _extract_section(src: str, start_re: str) -> list[str]:
             start = i
             break
     assert start is not None, f"phase marker not found: {start_re}"
-    # End at the next `## Phase ` heading (any phase, different from start)
     for j in range(start + 1, len(lines)):
         if lines[j].startswith("## Phase ") and not re.match(start_re, lines[j]):
+            return lines[start:j]
+        if re.match(r"^### Checkpoint \d", lines[j]):
             return lines[start:j]
     return lines[start:]
 
