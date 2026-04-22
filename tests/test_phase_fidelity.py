@@ -27,9 +27,30 @@ REPLACED_SUBSTRINGS = [
     "wait for the user",
     "Wait for the user",
     "HARD HALT",
-    "Checkpoint 1",
-    "Checkpoint 2",
-    "Checkpoint 3",
+]
+
+# Path remaps applied during migration. Before testing membership we rewrite
+# each original line with every remap; if either the raw or remapped form
+# appears in the new file, the line counts as preserved.
+PATH_REMAPS = [
+    ("/Users/agustinsilvazambrano/.claude/skills/notebooklm-legal-research-rhino/references/jurisdiction-filter.py",
+     "$SKILL_ROOT/references/scripts/jurisdiction-filter.py"),
+    ("/Users/agustinsilvazambrano/.claude/skills/notebooklm-legal-research-rhino/references/batch-import.py",
+     "$SKILL_ROOT/references/scripts/batch-import.py"),
+    ("references/jurisdiction-filter.py",
+     "$SKILL_ROOT/references/scripts/jurisdiction-filter.py"),
+    ("references/batch-import.py",
+     "$SKILL_ROOT/references/scripts/batch-import.py"),
+    ("references/source-priority.md",
+     "$SKILL_ROOT/references/source-priority.md"),
+    ("references/analysis-prompts.md",
+     "$SKILL_ROOT/references/analysis-prompts.md"),
+    ("references/citation-styles.md",
+     "$SKILL_ROOT/references/citation-styles.md"),
+    ("references/verification-protocol.md",
+     "$SKILL_ROOT/references/verification-protocol.md"),
+    ("references/output-templates.md",
+     "$SKILL_ROOT/references/output-templates.md"),
 ]
 
 # (phase_header_regex, dest_file)
@@ -79,7 +100,13 @@ def test_phase_content_preserved(start_re, fname):
             continue
         # Drop the heading level prefix (## vs ###) so we allow rewrapping
         s_no_hash = re.sub(r"^#+\s*", "", s)
-        if s not in new and s_no_hash not in new:
+        # Also try after applying each known path remap
+        variants = {s, s_no_hash}
+        for old, new_path in PATH_REMAPS:
+            if old in s:
+                variants.add(s.replace(old, new_path))
+                variants.add(s_no_hash.replace(old, new_path))
+        if not any(v in new for v in variants):
             missing.append(s)
     assert not missing, (
         f"{fname} missing {len(missing)} lines from original phase section.\n"
