@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Minimal canned-response mock for the notebooklm CLI.
+set -e
+CMD="$1"
+shift
+case "$CMD" in
+  status)  echo "Authenticated as: test@example.com" ;;
+  create)  echo '{"id":"nb-mock-1"}' ;;
+  research)
+    if [ "$1" = "status" ]; then
+      cat "$(dirname "$0")/fixtures/research_1.json"
+    fi ;;
+  source)
+    case "$1" in
+      add-research) echo "ok" ;;
+      add)          echo "source-id-$RANDOM" ;;
+      list)         echo '{"sources":[{"id":"s1","title":"Mock","status":"ready","url":"https://example.gov"}]}' ;;
+      clean)        echo "cleaned" ;;
+      delete)       echo "deleted" ;;
+    esac ;;
+  ask)
+    if echo "$@" | grep -q "SourceOverview"; then
+      cat "$(dirname "$0")/fixtures/source_overview.txt"
+    else
+      echo "mock response"
+    fi ;;
+  note)
+    case "$1" in
+      list) echo '{"notes":[{"id":"n1","title":"SourceOverview"}]}' ;;
+      get)  echo "mock note content" ;;
+    esac ;;
+  *)  echo "unknown cmd: $CMD" >&2; exit 2 ;;
+esac
