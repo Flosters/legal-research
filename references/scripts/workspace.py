@@ -55,3 +55,41 @@ def mark_phase_complete(workspace: Path, phase: str, next_phase: str) -> dict:
     (Path(workspace) / "state.json").write_text(
         json.dumps(state, ensure_ascii=False, indent=2))
     return state
+
+
+# ---- CLI entrypoint ----
+def _cli():
+    import argparse
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p_mc = sub.add_parser("mark-complete")
+    p_mc.add_argument("workspace"); p_mc.add_argument("phase"); p_mc.add_argument("next_phase")
+
+    p_up = sub.add_parser("update")
+    p_up.add_argument("workspace")
+    p_up.add_argument("--set", dest="sets", action="append", default=[],
+                      help="key=value; repeatable")
+    p_up.add_argument("--mark-complete", dest="mark", default=None)
+    p_up.add_argument("--next-phase", dest="next", default=None)
+
+    args = ap.parse_args()
+    w = Path(args.workspace)
+    if args.cmd == "mark-complete":
+        mark_phase_complete(w, args.phase, args.next_phase)
+    elif args.cmd == "update":
+        patch = {}
+        for kv in args.sets:
+            if "=" not in kv:
+                raise SystemExit(f"bad --set: {kv}")
+            k, v = kv.split("=", 1)
+            patch[k] = v
+        if patch:
+            update_state(w, patch)
+        if args.mark:
+            if not args.next:
+                raise SystemExit("--mark-complete requires --next-phase")
+            mark_phase_complete(w, args.mark, args.next)
+
+if __name__ == "__main__":
+    _cli()
