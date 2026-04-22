@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "slug": "test-complete",
+  "created_at": "2026-04-22T10:00:00Z",
+  "completed_phases": ["1","2","3","3.5","3.6","3.7","4","4.1","4.5","5","5.5","5.6"],
+  "next_phase": "6",
+  "scope": {
+    "topic": "Despido sin causa",
+    "jurisdiction": "Argentina",
+    "area_of_law": "Laboral",
+    "posture": "litigation",
+    "report_language": "es",
+    "legally_relevant_date": "2023-08-15"
+  },
+  "research_checklist": [
+    {"node_id": 1, "name": "Rule on dismissal", "criterion": "2+ primary authorities", "status": "satisfied"}
+  ],
+  "research_queries": [
+    {"query_id": 1, "angle": "primary authority", "query": "Argentina despido ley 20744", "nodes": [1]}
+  ],
+  "nb_id": "nb-xyz",
+  "notebook_title": "Legal Research: Despido sin causa — Argentina — 2026-04-22",
+  "evidence_registry": [
+    {
+      "id": 1,
+      "title": "Ley 20.744",
+      "url": "https://infoleg.gob.ar/ley-20744",
+      "tier": "T1",
+      "nodes": [1],
+      "batch": "B1",
+      "pub_date": "1976-05-13",
+      "enforce_date": "1976-05-13",
+      "import_status": "imported",
+      "queryable_status": "queryable",
+      "flags": []
+    }
+  ],
+  "imports": {"B1": ["Ley 20.744"]},
+  "source_overview_note_id": "n-src-1",
+  "analysis_notes": {
+    "issue": "Issue Spotting",
+    "rule": "Rule Statement",
+    "application": "Application Analysis",
+    "conclusion": "Conclusion Synthesis",
+    "verification": "Verification Check"
+  },
+  "citation_log": [],
+  "cross_exam": {}
+}

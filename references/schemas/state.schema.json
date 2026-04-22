@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LegalResearchWorkspaceState",
+  "type": "object",
+  "required": ["schema_version", "slug", "created_at", "scope", "completed_phases", "next_phase"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "completed_phases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "next_phase": {
+      "enum": ["1","2","3","3.5","3.6","3.7","4","4.1","4.5","5","5.5","5.6","6","done"]
+    },
+    "scope": {
+      "type": "object",
+      "required": ["topic","jurisdiction","report_language"],
+      "properties": {
+        "topic":                 { "type": "string" },
+        "jurisdiction":          { "type": "string" },
+        "area_of_law":           { "type": "string" },
+        "posture":               { "enum": ["litigation","transactional","advisory","academic"] },
+        "report_language":       { "type": "string" },
+        "legally_relevant_date": { "type": "string" }
+      }
+    },
+    "research_checklist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["node_id","name","criterion"],
+        "properties": {
+          "node_id":   { "type": "integer" },
+          "name":      { "type": "string" },
+          "criterion": { "type": "string" },
+          "status":    { "enum": ["pending","satisfied","thin","unanchored"] }
+        }
+      }
+    },
+    "research_queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["query_id","angle","query","nodes"],
+        "properties": {
+          "query_id": { "type": "integer" },
+          "angle":    { "type": "string" },
+          "query":    { "type": "string" },
+          "nodes":    { "type": "array", "items": { "type": "integer" } }
+        }
+      }
+    },
+    "nb_id":               { "type": "string" },
+    "notebook_title":      { "type": "string" },
+    "evidence_registry":   {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id","title","url","tier","nodes"],
+        "properties": {
+          "id":                 { "type": "integer" },
+          "title":               { "type": "string" },
+          "url":                 { "type": "string" },
+          "tier":                { "enum": ["T1","T2","T3"] },
+          "nodes":               { "type": "array", "items": { "type": "integer" } },
+          "batch":               { "type": "string" },
+          "pub_date":            { "type": ["string","null"] },
+          "enforce_date":        { "type": ["string","null"] },
+          "import_status":       { "enum": ["pending","imported","failed","skipped","not_crawlable","not_queryable_disclosed"] },
+          "queryable_status":    { "enum": ["pending","queryable","empty","timeout","not_queryable_disclosed","truncated_holding_missing","not_applicable"] },
+          "flags":               { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "imports":             { "type": "object" },
+    "source_overview_note_id": { "type": "string" },
+    "analysis_notes":      {
+      "type": "object",
+      "properties": {
+        "issue":        { "type": "string" },
+        "rule":         { "type": "string" },
+        "application":  { "type": "string" },
+        "conclusion":   { "type": "string" },
+        "verification": { "type": "string" }
+      }
+    },
+    "citation_log":        { "type": "array" },
+    "cross_exam":          { "type": "object" },
+    "report_path":         { "type": "string" }
+  },
+  "additionalProperties": false
+}
