@@ -91,6 +91,14 @@ If the re-import also fails the spot-check, mark the source `[NOT QUERYABLE — 
 - Every citation to it will be `[SECONDARY ONLY]` at best
 - The Verification Notes section must disclose it explicitly
 
+**Update the Evidence Registry** with the spot-check outcome column:
+
+| #  | Title | URL | Tier | Node(s) | Batch | Pub. Date | Enforcement Date | Import | Queryable |
+|----|-------|-----|------|---------|-------|-----------|-----------------|--------|-----------|
+| 1  | Ley 20.744 | infoleg.gob.ar/... | T1 | 2 | Q1 | 1976-05-13 | 1976-05-13 | ✓ | Queryable ✓ |
+| 2  | Halabi c/ PEN | csjn.gov.ar/...pdf | T1 | 1 | 3.7 | 2009-02-24 | 2009-02-24 | ✓ | Queryable ✓ |
+| 3  | Acordada 32/2014 | csjn.gov.ar/...pdf | T1 | 1 | 3.7 | 2014-06-03 | 2014-06-03 | ✓ | NOT QUERYABLE — DISCLOSED |
+
 ## Return to Subagent C
 
 Return to Subagent C in your ≤200-word summary:

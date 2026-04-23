@@ -88,83 +88,42 @@ Notify the user and immediately continue to Phase 4.5:
 
 ## Phase 4.1 — Queryability Spot-Check (Primary Sources Only)
 
-After import, confirm each Tier 1 primary source is actually queryable — not just registered as a source ID. This is the step that catches the silent-empty-body failure mode: `notebooklm source add` returns a source ID for JS-rendered pages even when the content body is empty and unsearchable.
+> Spot-check execution rules for each runner are in
+> `$SKILL_ROOT/references/phases/phase-4-spot-check-runner.md`.
+> Each T1 source is checked in a parallel sub-subagent. `notebooklm ask` is read-only,
+> so all runners query the same main notebook (`$NB_ID`) safely in parallel.
 
-Run one targeted query per primary source using the source's name and the central legal issue as the query. Do **not** run this for Tier 2/3 sources — the cost in API calls is not justified for secondary materials.
+Do **not** run spot-checks for Tier 2/3 sources — the cost in API calls is not justified for secondary materials.
 
-```bash
-# For each Tier 1 source in the Evidence Registry, run:
-notebooklm ask "What does [Source Title] say about [central legal issue in 5 words]?" -n "$NB_ID"
-# Write in REPORT_LANGUAGE — not the jurisdiction language
-```
+### Dispatch spot-check runners (parallel)
 
-**Interpret the response:**
-
-| Response pattern | Meaning | Action |
-|---|---|---|
-| Response cites the source by name and quotes specific text | Source is queryable ✓ | Mark `Queryable ✓` in Evidence Registry |
-| Response says "I don't have information about X" or gives only generic answer without citing the source | Source indexed but empty | Apply fallback escalation (see below) |
-| Response times out | Network issue | Retry once; if second timeout, mark `[SPOT-CHECK TIMEOUT]` and proceed |
-
-**Article-level probe (required for long statutes with specific cited articles):** After the generic queryability check passes for a statute, run a second targeted query for each article that appears in the research checklist or has been identified as a key citation in any Tier 2/3 source:
-
-```bash
-# For each cited article in a long statute, run:
-notebooklm ask "Reproduce the text of Article [N] of [Statute Name]." -n "$NB_ID"
-# Write in REPORT_LANGUAGE
-```
-
-**Interpret the response:**
-
-| Response | Meaning | Action |
-|---|---|---|
-| Response reproduces or closely paraphrases the article text | Article is indexed ✓ | Mark `Article [N] indexed ✓` in Evidence Registry |
-| Response says "I don't have information about that article" or gives a generic answer | Article not indexed | Mark `[ARTICLE NOT INDEXED]` in Evidence Registry for that article; apply the long-statute sub-import rule (Phase 3.7 Step A) to import the missing section |
-| Second sub-import also fails article probe | Section not crawlable | Every citation to that article receives `[SECONDARY ONLY]` in Phase 5.5; disclose in Verification Notes |
-
-**Two-part spot-check for court decisions:** For any source that is a court decision (not a statute), run two queries — not one:
-
-1. **General check:**
-```bash
-notebooklm ask "What does [Case Name] say about [central legal issue in 5 words]?" -n "$NB_ID"
-```
-
-2. **Holding/operative conclusion check:**
-```bash
-notebooklm ask "What is the holding / operative conclusion of [Case Name]?" -n "$NB_ID"
-# Use the jurisdiction's term: "holding" (common law); "parte dispositiva" or "dispositivo" (Spanish civil law); "dispositif" (French); "ratio decidendi" (Latin/academic)
-```
-
-If the holding check returns only factual summary with no legal conclusion, or says "I don't have information", mark the source `[TRUNCATED — HOLDING MISSING]`. A truncated source **cannot** receive `✓ Verified` for any holding-derived proposition in Phase 5.5. Apply the B3 fallback escalation to find a fuller version.
-
-**Fallback escalation for non-queryable sources:**
-
-A source that imported but is not queryable most likely has an empty index body. Apply Phase 3.7 B1 URL resolution rules to find a crawlable alternative URL, then re-import:
-
-```bash
-# Remove the empty source
-notebooklm source delete <source_id> -n "$NB_ID" -y
-
-# Import the resolved alternative URL
-notebooklm source add "<resolved-alternative-url>" -n "$NB_ID"
-
-# Re-run the spot-check query for this source
-notebooklm ask "What does [Source Title] say about [issue]?" -n "$NB_ID"
-```
-
-If the re-import also fails the spot-check, mark the source `[NOT QUERYABLE — DISCLOSED]` in the Evidence Registry. This status means:
-- The source **will not** yield `✓ Verified` or `~ Paraphrase — Consistent` citations in Phase 5.5
-- Every citation to it will be `[SECONDARY ONLY]` at best
-- The Verification Notes section must disclose it explicitly
-
-**Update the Evidence Registry** with the spot-check outcome column:
+Build the list of T1 sources from the Evidence Registry (import_status = "imported").
+Dispatch one spot-check sub-subagent per T1 source simultaneously in a single Agent tool call.
+Each runner loads `$SKILL_ROOT/references/phases/phase-4-spot-check-runner.md` and receives:
 
 ```
-| #  | Title | URL | Tier | Node(s) | Batch | Pub. Date | Enforcement Date | Import | Queryable |
-|----|-------|-----|------|---------|-------|-----------|-----------------|--------|-----------|
-| 1  | Ley 20.744 | infoleg.gob.ar/... | T1 | 2 | Q1 | 1976-05-13 | 1976-05-13 | ✓ | Queryable ✓ |
-| 2  | Halabi c/ PEN | csjn.gov.ar/...pdf | T1 | 1 | 3.7 | 2009-02-24 | 2009-02-24 | ✓ | Queryable ✓ |
-| 3  | Acordada 32/2014 | csjn.gov.ar/...pdf | T1 | 1 | 3.7 | 2014-06-03 | 2014-06-03 | ✓ | NOT QUERYABLE — DISCLOSED |
+SOURCE_ID       = <evidence registry id>
+TITLE           = <source title>
+SOURCE_TYPE     = "statute" | "case" | "regulation" | "constitutional_provision"
+CENTRAL_ISSUE   = <5-word summary of the research question, in REPORT_LANGUAGE>
+CITED_ARTICLES  = [<list of article numbers cited in T2/T3 sources, empty if not a statute>]
+NB_ID           = <main research notebook ID — same for all runners>
+REPORT_LANGUAGE = <from state.json scope>
+SKILL_ROOT      = <absolute path to hybrid skill root>
+```
+
+Wait for ALL runner summaries before proceeding.
+
+### Collect results + update Evidence Registry
+
+After all runners return, update the Evidence Registry entries in state.json with the returned `queryable_status` and `flags` for each source.
+
+```
+| #  | Title | URL | Tier | ... | Import | Queryable |
+|----|-------|-----|------|-----|--------|-----------|
+| 1  | Ley 20.744 | ... | T1 | ... | ✓ | Queryable ✓ |
+| 2  | Halabi c/ PEN | ... | T1 | ... | ✓ | Queryable ✓ |
+| 3  | Acordada 32/2014 | ... | T1 | ... | ✓ | NOT QUERYABLE — DISCLOSED |
 ```
 
 Notify the user:
