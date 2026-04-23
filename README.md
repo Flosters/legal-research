@@ -1,8 +1,17 @@
 # notebooklm-legal-research-hybrid
 
 Hybrid agentic reincarnation of `notebooklm-legal-research-rhino`. Same quality
-layers; autonomous end-to-end; subagent-per-phase. See
-`/Users/agustinsilvazambrano/docs/plans/2026-04-22-notebooklm-legal-research-hybrid-migration.md`.
+layers (verifiable checklist, evidence registry, crawlability checks, primary-source
+import, citation verification, cross-examination) — but runs end-to-end autonomously
+by dispatching fresh-context subagents for each phase.
+
+## Installation
+
+```bash
+npx skills add <your-github-username>/notebooklm-legal-research-hybrid
+```
+
+Requires the [`notebooklm` CLI](https://github.com/your-github-username/notebooklm) authenticated.
 
 ## Layout
 
