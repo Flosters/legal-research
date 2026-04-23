@@ -60,7 +60,7 @@ PHASES = [
     (r"^## Phase 3\.6 —", ["phase-3-research-curation.md"]),
     (r"^## Phase 3\.7 —", ["phase-3-7-primary-import.md"]),
     (r"^## Phase 4 —",    ["phase-4-import-queryability.md"]),
-    (r"^## Phase 4\.1 —", ["phase-4-import-queryability.md"]),
+    (r"^## Phase 4\.1 —", ["phase-4-import-queryability.md", "phase-4-spot-check-runner.md"]),
     (r"^## Phase 4\.5 —", ["phase-4-import-queryability.md"]),
     (r"^## Phase 5 —",    ["phase-5-analysis.md"]),
     (r"^## Phase 5\.5 —", ["phase-5-5-citation-verification.md"]),
