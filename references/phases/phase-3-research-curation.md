@@ -19,37 +19,60 @@ estimated_runtime_minutes: 25-80
 
 ---
 
-## Phase 3 — Deep Research (Node-Anchored)
+## Phase 3 — Deep Research (Parallel Fan-Out)
 
-Run the N queries confirmed in Phase 1, using the exact strings recorded in `RESEARCH_QUERIES`. Write all query strings in the **jurisdiction's primary language** — not in report language. Anchor every query with the full country name in that language (e.g., `"Argentina contrato de trabajo indemnización por despido"`, `"Brasil direito tributário ICMS"`). Deep-research results are not geographically filtered — omitting the country name reliably pulls in sources from neighbouring jurisdictions.
+> Query execution rules for each runner are in
+> `$SKILL_ROOT/references/phases/phase-3-query-runner.md`.
+> Each query angle runs in a dedicated sub-subagent with its own temp notebook,
+> eliminating the `research status` race condition.
 
 Source priority guidance by jurisdiction: load `$SKILL_ROOT/references/source-priority.md`.
 
-Capture `research status` immediately after each query completes, before starting the next. This is critical: `research status` only reflects the most recently completed session.
+### Stage 1 — Create temp notebooks (sequential, 5-second gap)
+
+For each query in `RESEARCH_QUERIES`, create a dedicated temp notebook. The 5-second sleep
+between creations avoids concurrent-creation API rate limits.
 
 ```bash
-# Query 1 — [angle from RESEARCH_QUERIES[1]] → Node(s): [n]
-notebooklm source add-research "[query 1 string — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_1_$NB_ID.json
-
-# Query 2 — [angle from RESEARCH_QUERIES[2]] → Node(s): [n]
-notebooklm source add-research "[query 2 string — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_2_$NB_ID.json
-
-# Query 3 — [angle from RESEARCH_QUERIES[3]] → Node(s): [n]
-notebooklm source add-research "[query 3 string — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_3_$NB_ID.json
-
-# Query 4 — only if N ≥ 4
-notebooklm source add-research "[query 4 string — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_4_$NB_ID.json
-
-# Query 5 — only if N = 5
-notebooklm source add-research "[query 5 string — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_5_$NB_ID.json
+NB_TEMP_1=$(notebooklm create "research-temp-q1-$NB_ID" --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))")
+sleep 5
+NB_TEMP_2=$(notebooklm create "research-temp-q2-$NB_ID" --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))")
+sleep 5
+# Repeat for NB_TEMP_3, NB_TEMP_4, NB_TEMP_5 only if N ≥ 3 / 4 / 5
 ```
 
-Sources are discovered but not yet imported. Proceed to Phase 3.5.
+### Stage 2 — Dispatch query runners (parallel)
+
+Dispatch ALL query sub-subagents simultaneously in a single Agent tool call. Each runner
+loads `$SKILL_ROOT/references/phases/phase-3-query-runner.md` and receives:
+
+```
+SKILL_ROOT  = <absolute path to hybrid skill root>
+WORKSPACE   = <absolute path to current workspace>
+NB_ID       = <assigned temp notebook ID for this runner — NB_TEMP_N>
+QUERY_ID    = <query_id from RESEARCH_QUERIES[N]>
+QUERY_STRING = <verbatim query string from RESEARCH_QUERIES[N], in jurisdiction language>
+NODES       = <nodes list from RESEARCH_QUERIES[N]>
+JURISDICTION = <from state.json scope>
+```
+
+Wait for ALL sub-subagent summaries before proceeding to Stage 3.
+
+### Stage 3 — Collect results + cleanup temp notebooks
+
+After all runners return their source lists, delete the temp notebooks to avoid clutter:
+
+```bash
+notebooklm notebook delete "$NB_TEMP_1" -y
+notebooklm notebook delete "$NB_TEMP_2" -y
+# Repeat for all NB_TEMP_N
+# If the delete command is unavailable, empty each notebook instead:
+#   notebooklm source clean --yes -n "$NB_TEMP_N"
+```
+
+Hold the N source lists in memory as arrays (one per runner). Proceed to Phase 3.5 to merge
+and curate. The curation logic in Phase 3.5 is unchanged — it receives N source arrays
+instead of N sequential JSON files, but applies the same dedup and filtering rules.
 
 ---
 
