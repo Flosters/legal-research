@@ -62,6 +62,24 @@ For every secondary source (article, treatise, doctrine, commentary) that quotes
 
 This pillar is the primary enforcement mechanism for Phase 2.5 of the research workflow.
 
+### Pillar 7: Regulatory Topical Match
+
+For every decree, resolution, or administrative act cited for a specific proposition:
+- Retrieve the instrument's subject-matter heading, recitals, or official summary — a numeric identifier alone is never sufficient.
+- Confirm the instrument governs the stated topic (e.g., a decree cited for IP policy must actually concern IP, not road traffic, taxation, or an unrelated domain).
+- Different instruments with identical year-numbers can govern entirely unrelated matters.
+- If subject-matter cannot be confirmed: mark `[UNVERIFIED — TOPIC NOT CONFIRMED]` and remove the citation from substantive claims. Never infer topic from surrounding context.
+
+### Pillar 8: Legislative Status
+
+For every statutory reference, verify it is enacted and in force before citing as positive law:
+- **Enacted and in force:** cite normally.
+- **Bill pending in legislature:** present as *"pending legislation — not in force"*; never describe as a rule, requirement, or existing obligation.
+- **Bill withdrawn, rejected, or lapsed:** note status explicitly; do not cite as authority.
+- **Partial promulgation:** identify which provisions are in force; do not generalize.
+
+Argentine Senate projects (S-XXXX/YYYY) are a known false-positive risk — always confirm promulgation via InfoLeg or the Boletín Oficial before treating as law.
+
 ---
 
 ## Phase 3 — Verify
@@ -71,6 +89,12 @@ Independent confirmation of every citation:
 2. Confirm the holding or provision matches your description
 3. Check subsequent history (has it been reversed, overruled, distinguished?)
 4. Any source that cannot be confirmed must be disclosed as **[UNVERIFIED]** in the final output — never silently remove it, never present it as confirmed
+
+**Source Loss Protocol:** If a cited primary source is removed after failing Phase 3 verification, every claim that depended solely on that source must be re-evaluated:
+- If another verified primary source supports the claim → re-cite to that source.
+- If only secondary sources remain → re-qualify the claim as "per secondary sources only" and disclose in Verification Notes.
+- If no sources remain → remove the claim entirely.
+- Never silently leave a claim cited to a removed or invalidated primary instrument.
 
 ---
 
