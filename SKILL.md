@@ -1,165 +1,208 @@
 ---
-name: legal-research
-description: Comprehensive AI-powered legal research for lawyers, law students, and paralegals. Performs deep, jurisdiction-specific research entirely within the agent — finding, verifying, and synthesizing primary and secondary sources into a structured, verified legal memo. Trigger on /legal-research command or when the user asks to research a legal topic, find case law, analyze statutes, investigate legal doctrine, or answer questions requiring sourced legal analysis. Always asks for jurisdiction if not stated. Responds in the language of the query. Applies mandatory anti-hallucination cross-examination before delivering results. Never sends the user to external tools — all research is performed autonomously via web search.
+name: notebooklm-legal-research-hybrid
+description: >
+  Hybrid agentic reincarnation of notebooklm-legal-research-rhino. Same quality layers
+  (verifiable checklist, evidence registry, crawlability checks, NotebookLM citation
+  verification, Claude cross-examination) — but runs end-to-end autonomously by
+  dispatching fresh-context subagents for each phase. Thin orchestrator: only Phase 1
+  scope extraction and Phase 2 notebook creation run inline. Phases 3–6 are handled
+  by subagents that load their own phase sub-skill from references/phases/. Resume
+  is autonomous via --resume <path>. Requires notebooklm CLI, authenticated.
+  Trigger on /notebooklm-legal-research-hybrid or on any deep-legal-research request.
 ---
 
-# Legal Research
+# NotebookLM Legal Research — Hybrid Edition
 
-Perform deep, sourced legal research and deliver a verified, structured analysis. All research is done autonomously — no external tools required from the user.
+This skill is a **router**, not a workflow. Every substantive phase runs in a fresh
+subagent with its own context window. The orchestrator only does two things:
 
-## Workflow Overview
+1. Extract scope + checklist + queries from the user (Phase 1), create the notebook
+   (Phase 2), and initialise the workspace.
+2. Dispatch seven subagents in sequence, each reading and writing `state.json`.
 
-Two-gate hybrid: clarification → plan confirmation (Gate 1) → research → source review (Gate 2) → synthesis → cross-examination → final output.
-
----
-
-## Execution Constraints
-
-- **Run synchronously.** Never use Monitor, ScheduleWakeup, or background polling loops. All phases complete inline before returning.
-- **Suppress phase narration.** Do not write "Now starting Phase X", "Moving to Phase Y", or similar transition headers between internal phases. Visible output is limited to: (1) Gate 1 plan + confirmation prompt, (2) Gate 2 source table + confirmation prompt, and (3) the final memo. No running commentary between phases.
-- **Source failure handling — apply immediately on any HTTP error:**
-  - 403 / 404: try the official government/institutional alternative URL from the same tier before marking failed; document both the failed URL and the replacement in the Research Log.
-  - Paywall blocked: mark `[PAYWALL BLOCKED]`, skip — do not retry or infer content.
-  - YouTube / video-only URLs: mark `[NON-CRAWLABLE: MEDIA]`, skip — these contain no citable text.
-  - All tier-equivalent alternatives exhausted: mark `[CRAWL FAILED]` and note in Research Log.
-- **Pending legislation:** Any bill, senate project, or legislative proposal not yet enacted (e.g., Argentine S-XXXX/YYYY, US House/Senate bills pre-enactment) must be presented as *pending legislation — not in force*. Never cite as positive law without confirming promulgation.
-- **Claim provenance:** If a claim's only primary source is removed after verification fails, re-qualify the claim as "per secondary sources only" or remove it entirely. Never leave a claim cited to a lost or invalid primary instrument.
+All per-phase rules, fallback ladders, and jurisdiction logic live in
+`references/phases/*.md`. The orchestrator never loads them.
 
 ---
 
-## Gate 1 — Scope & Plan
+## Language Rules
 
-**Extract from the query:**
-- Legal question / topic
-- Jurisdiction — ask if not stated or not clearly inferable
-- Area of law — infer if possible; confirm only if genuinely ambiguous
-- Procedural posture (litigation, transactional, advisory, academic) — infer when possible
+| Concern | Rule |
+|---|---|
+| Report language (`REPORT_LANGUAGE`) | Language of the user's query. Phase subagents inherit via state.json. |
+| Phase 3 research queries | Jurisdiction's primary language. Set by orchestrator in Phase 1; stored in `research_queries[*].query`. |
+| Phase 5/5.5/5.6 prompts | `REPORT_LANGUAGE` — enforced by every phase subagent. |
 
-**Ask only what's missing.** One consolidated question covering all gaps. Never ask more than 3 clarifying questions total. If jurisdiction is the only gap, ask only that.
+---
 
-**Present a research plan and ask for confirmation before proceeding:**
+## Resume Handler
+
+**If the invocation begins with `resume <path-to-state.json>`:**
+
+1. `state = load <path>`
+2. Validate against `references/schemas/state.schema.json`.
+3. Print restoration summary (slug, topic, jurisdiction, completed_phases, next_phase).
+4. Jump directly to the Dispatch Table entry for `state.next_phase`.
+
+No user pause. No re-execution of completed phases.
+
+**If the invocation begins with `new <query>` or a plain user query**, proceed to Phase 1.
+
+---
+
+## Prerequisites
+
+**Step 1 — Ensure required permissions are set** (silent if already configured):
+
+```bash
+python3 << 'EOF'
+import json, pathlib
+p = pathlib.Path('~/.claude/settings.json').expanduser()
+d = json.loads(p.read_text()) if p.exists() else {}
+needed = ['Bash(notebooklm *)', 'Bash(python3 *)', 'Agent(*)']
+allow = d.setdefault('permissions', {}).setdefault('allow', [])
+added = [r for r in needed if r not in allow]
+if added:
+    allow.extend(added)
+    p.write_text(json.dumps(d, indent=2))
+    print(f"Permissions added: {added}. Restart Claude Code for them to take effect.")
+else:
+    print("Permissions OK.")
+EOF
 ```
-Research question: [precise restatement]
-Jurisdiction: [confirmed]
-Area of law: [identified]
-Source tiers planned: Official databases → Academic repositories → Specialized analysis
-Output: Structured legal memo (IRAC/CRAC) with verified citations
+
+**Step 2 — Check NotebookLM authentication:**
+
+```bash
+notebooklm status  # must show "Authenticated as: ..."
 ```
 
-Ask: "Confirm to proceed, or adjust scope?"
+If not authenticated, prompt the user once to run `notebooklm login`, then abort.
 
 ---
 
-## Research Phase
+## Phase 1 — Scope + Checklist (inline)
 
-Follow this sequence after Gate 1 confirmation. Load `references/source-priority.md` for the full database list by jurisdiction.
+Load `references/scope-prompt.md` for the full Phase 1 logic (scope extraction, verifiable checklist design, research-query design). Ask at most one consolidated clarification question; never more than three clarifying questions total.
 
-1. **Secondary sources first** — legal encyclopedias, treatises, law review articles, practice guides. These map doctrine and vocabulary before primary law.
-2. **Primary authorities** — constitutions, statutes, regulations, case law. Prioritize mandatory authority over persuasive. Read full judgment texts; never rely on headnotes or summaries to identify *ratio decidendi* vs *obiter dicta*.
-3. **Search strategy** — start broad, progressively narrow. Use Boolean logic where search engines support it. Tier 1 (official/free) sources first, then Tier 2 (academic), then Tier 3 (specialized analysis).
-4. **Source assessment** — for each source, determine: authority type, relevance, currency, and verifiability. Flag any source that cannot be independently confirmed as `[UNVERIFIED]`.
+Produce a JSON object with this shape and write it to `/tmp/scope-$$.json`:
 
----
+```json
+{
+  "topic": "...",
+  "jurisdiction": "...",
+  "area_of_law": "...",
+  "posture": "litigation|transactional|advisory|academic",
+  "report_language": "es|en|pt|fr|...",
+  "legally_relevant_date": "YYYY-MM-DD or 'today' or 'not applicable'",
+  "research_checklist": [ {"node_id": 1, "name": "...", "criterion": "..."}, ... ],
+  "research_queries":   [ {"query_id": 1, "angle": "...", "query": "...", "nodes": [1]}, ... ]
+}
+```
 
-## Gate 2 — Source Review
+Present the checklist + query plan to the user as a compact summary and ask ONE confirmation question: *"Confirm to proceed, or adjust scope?"*
 
-Present all found sources as a table before synthesizing:
+On confirmation:
 
-| # | Source | Type | Relevance | Status |
-|---|--------|------|-----------|--------|
-| 1 | [Title](url) | Primary — Case | Key precedent on X | ✓ Verified |
-| 2 | [Title](url) | Secondary — Article | Background doctrine | ✓ Verified |
-| 3 | [Title](url) | Primary — Statute | Governing provision | [UNVERIFIED] |
+```bash
+WORKSPACE=$(python3 "$SKILL_ROOT/references/scripts/scope_to_state.py" \
+              "$SKILL_ROOT/research-workspaces" /tmp/scope-$$.json)
+echo "Workspace: $WORKSPACE"
+```
 
-Ask: "Proceed with these sources, or remove/add any before I synthesize?"
-
----
-
-## Phase 2.5 — Deep Source Verification
-
-Run this phase after Gate 2 confirmation and before synthesis. It ensures all applicable primary sources are fully read and that secondary source citations are faithful to the primary text.
-
-### Part A — Full-Text Retrieval
-
-For every primary source (case, statute, regulation, constitutional provision) confirmed in Gate 2 as applicable:
-
-1. Fetch the **full text** via web search or direct URL — not a summary, headnote, or abstract.
-2. If full text is unavailable, mark the source `[FULL TEXT UNAVAILABLE]` and note what partial version was used.
-3. Extract and store verbatim the key provisions or holdings relevant to the research question, with exact location references (e.g. "Art. 5, §3, para. 2" or "slip op. at 14").
-
-### Part B — Secondary Citation Cross-Referencing
-
-For every secondary source (article, treatise, commentary, doctrine) that quotes or paraphrases a primary source:
-
-1. Extract each quoted or attributed passage.
-2. Search it against the full text retrieved in Part A.
-3. Classify the result:
-   - **`[TEXT VERIFIED]`** — the quoted passage appears verbatim or near-verbatim in the primary; cite with exact location.
-   - **`[PARAPHRASE — CONSISTENT]`** — the passage is a paraphrase but accurately represents the primary text; note the actual wording.
-   - **`[CITATION MISMATCH]`** — the quoted passage does not appear in the primary text, or the primary text says something materially different; disclose both the secondary's claim and what the primary actually says.
-4. Only passages classified as `[TEXT VERIFIED]` or `[PARAPHRASE — CONSISTENT]` may be cited in the final report. `[CITATION MISMATCH]` findings must be disclosed in Verification Notes.
+**This is the last synchronous user prompt.** Everything after this point runs autonomously.
 
 ---
 
-## Synthesis Phase
+## Phase 2 — Notebook Creation (inline)
 
-After Gate 2 confirmation:
-
-1. **Structure** using IRAC or CRAC — load `references/output-templates.md` for full templates. Choose based on jurisdiction and context:
-   - US / Canada / Latin America: IRAC or CRAC
-   - UK / Commonwealth: CRAC or CREAC
-   - Academic / pure advisory: IRAC
-
-2. **Citations** — load `references/citation-styles.md` to auto-detect style by jurisdiction. Fall back to raw hyperlinks with title and date if style is ambiguous.
-
-3. **Canons of construction** — apply where statutory interpretation is at issue (plain meaning, purposivist, contextual, *in pari materia*, etc.).
-
----
-
-## Verification Phase (mandatory — never skip)
-
-Before presenting final output, apply the AI Cross-Examination Protocol. Load `references/verification-protocol.md` for the full framework.
-
-**Minimum checks always required:**
-1. Verify every cited case/statute exists and says what you claim — do not cite from memory
-2. Steelman the opposing position — identify how opposing counsel would attack the analysis
-3. Check internal consistency — would the analysis hold if reformatted as an elements chart?
-4. Identify and disclose the weakest link in the reasoning chain
-5. Any source still marked `[UNVERIFIED]` must be disclosed in the output with a note
+```bash
+TITLE="Legal Research: $(jq -r .scope.topic "$WORKSPACE/state.json") — \
+$(jq -r .scope.jurisdiction "$WORKSPACE/state.json") — $(date +%F)"
+NB_ID=$(notebooklm create "$TITLE" --json | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id') or d.get('notebook_id') or d.get('notebook',{}).get('id',''))")
+python3 "$SKILL_ROOT/references/scripts/workspace.py" update "$WORKSPACE" \
+  --set nb_id="$NB_ID" --set notebook_title="$TITLE" \
+  --mark-complete 2 --next-phase 3
+```
 
 ---
 
-## Final Output
+## Dispatch Table
 
-Respond in the **language of the query** unless the user specifies otherwise.
+| next_phase in state.json | Phase skill to load | Subagent label |
+|---|---|---|
+| `3` / `3.5` / `3.6` | `references/phases/phase-3-research-curation.md` | A |
+| `3.7`               | `references/phases/phase-3-7-primary-import.md` | B |
+| `4` / `4.1` / `4.5` | `references/phases/phase-4-import-queryability.md` | C |
+| `5`                 | `references/phases/phase-5-analysis.md` | D |
+| `5.5`               | `references/phases/phase-5-5-citation-verification.md` | E |
+| `5.6`               | `references/phases/phase-5-6-cross-examination.md` | F |
+| `6`                 | `references/phases/phase-6-report.md` | G |
+| `done`              | — (print report path + node coverage; exit) |
+
+Dispatch table phase IDs: 3-curation, 3.7, 4-indexing, 5, 5.5, 5.6, 6.
+
+---
+
+## Subagent Dispatch Protocol
+
+For each entry in the Dispatch Table matching `state.next_phase`, dispatch a subagent via the Agent tool with this exact prompt template:
 
 ```
-# Legal Research: [Topic]
-**Jurisdiction:** | **Date:** | **Area of law:**
+You are Subagent <LABEL> for the hybrid legal-research skill.
 
-## Research Question
-[Precise restatement]
+Load ONLY these files:
+  - <absolute path to phase skill>
+  - <absolute path to any loads_reference entries in its frontmatter>
+  - $WORKSPACE/state.json
 
-## Sources Consulted
-[Verified source table — Tier 1 first, then Tier 2, Tier 3]
+Environment variables to use verbatim in shell commands:
+  WORKSPACE=<absolute path>
+  SKILL_ROOT=<absolute path to /Users/agustinsilvazambrano/.claude/skills/notebooklm-legal-research-hybrid>
+  NB_ID=<from state.json>
+  REPORT_LANGUAGE=<from state.json scope>
+  LEGALLY_RELEVANT_DATE=<from state.json scope>
+  JURISDICTION=<from state.json scope>
 
-## Legal Analysis
-[Full IRAC / CRAC / CREAC memo]
-
-## Verification Notes
-[Weakest link, UNVERIFIED disclosures, CITATION MISMATCH disclosures, opposing position summary]
-
-## Research Log
-[Databases searched, queries run]
+Execute every step in the phase skill, in order. On exit, call
+`python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE <last_phase> <next_phase>`
+then return a ≤200-word summary to the orchestrator. Do not load other phase files.
+If any step fails after the documented fallback ladder, write `error: <reason>` to
+state.json and return the error — do not prompt the user, do not retry indefinitely.
 ```
+
+Wait for the subagent summary. Print it verbatim to the user. Then:
+
+```bash
+NEXT=$(jq -r .next_phase "$WORKSPACE/state.json")
+# Loop: look up NEXT in Dispatch Table, dispatch next subagent, or exit on done.
+```
+
+---
+
+## Error Handling
+
+- **Subagent returns `error:`**: stop the loop, show the error + state.json path, tell the user how to resume: `/notebooklm-legal-research-hybrid resume <state.json path>`.
+- **Schema validation failure**: the workspace helper raises; treat as fatal; surface to user.
+- **notebooklm CLI not authenticated mid-run**: subagent aborts; user is given resume instructions.
+
+No silent continuation past failure.
 
 ---
 
 ## Reference Files
 
-| File | Load when |
-|------|-----------|
-| `references/source-priority.md` | Selecting which sources to search, in what order, by jurisdiction |
-| `references/citation-styles.md` | Formatting citations for any jurisdiction |
-| `references/verification-protocol.md` | Running the AI Cross-Examination Protocol |
-| `references/output-templates.md` | Structuring IRAC / CRAC / CREAC analysis |
+| File | Loaded by |
+|---|---|
+| `references/scope-prompt.md` | Orchestrator (Phase 1 only) |
+| `references/schemas/state.schema.json` | Every workspace.py call |
+| `references/scripts/workspace.py` | Orchestrator + every subagent |
+| `references/scripts/scope_to_state.py` | Orchestrator (Phase 1 only) |
+| `references/scripts/jurisdiction-filter.py` | Subagent A |
+| `references/scripts/batch-import.py` | Subagent C |
+| `references/source-priority.md` | Subagents A + B |
+| `references/analysis-prompts.md` | Subagents D + E |
+| `references/verification-protocol.md` | Subagent F |
+| `references/output-templates.md` | Subagent G |
+| `references/citation-styles.md` | Subagent G |
