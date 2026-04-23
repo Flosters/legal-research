@@ -53,19 +53,19 @@ PATH_REMAPS = [
      "$SKILL_ROOT/references/output-templates.md"),
 ]
 
-# (phase_header_regex, dest_file)
+# (phase_header_regex, [dest_files — content checked combined])
 PHASES = [
-    (r"^## Phase 3 —", "phase-3-research-curation.md"),
-    (r"^## Phase 3\.5 —", "phase-3-research-curation.md"),
-    (r"^## Phase 3\.6 —", "phase-3-research-curation.md"),
-    (r"^## Phase 3\.7 —", "phase-3-7-primary-import.md"),
-    (r"^## Phase 4 —", "phase-4-import-queryability.md"),
-    (r"^## Phase 4\.1 —", "phase-4-import-queryability.md"),
-    (r"^## Phase 4\.5 —", "phase-4-import-queryability.md"),
-    (r"^## Phase 5 —", "phase-5-analysis.md"),
-    (r"^## Phase 5\.5 —", "phase-5-5-citation-verification.md"),
-    (r"^## Phase 5\.6 —", "phase-5-6-cross-examination.md"),
-    (r"^## Phase 6 —", "phase-6-report.md"),
+    (r"^## Phase 3 —",    ["phase-3-research-curation.md", "phase-3-query-runner.md"]),
+    (r"^## Phase 3\.5 —", ["phase-3-research-curation.md"]),
+    (r"^## Phase 3\.6 —", ["phase-3-research-curation.md"]),
+    (r"^## Phase 3\.7 —", ["phase-3-7-primary-import.md"]),
+    (r"^## Phase 4 —",    ["phase-4-import-queryability.md"]),
+    (r"^## Phase 4\.1 —", ["phase-4-import-queryability.md"]),
+    (r"^## Phase 4\.5 —", ["phase-4-import-queryability.md"]),
+    (r"^## Phase 5 —",    ["phase-5-analysis.md"]),
+    (r"^## Phase 5\.5 —", ["phase-5-5-citation-verification.md"]),
+    (r"^## Phase 5\.6 —", ["phase-5-6-cross-examination.md"]),
+    (r"^## Phase 6 —",    ["phase-6-report.md"]),
 ]
 
 
@@ -91,12 +91,12 @@ def _extract_section(src: str, start_re: str) -> list[str]:
     return lines[start:]
 
 
-@pytest.mark.parametrize("start_re,fname", PHASES)
-def test_phase_content_preserved(start_re, fname):
-    dest = PHASE_DIR / fname
-    assert dest.exists(), f"phase file missing: {fname}"
+@pytest.mark.parametrize("start_re,fnames", PHASES)
+def test_phase_content_preserved(start_re, fnames):
+    for fname in fnames:
+        assert (PHASE_DIR / fname).exists(), f"phase file missing: {fname}"
     original = ORIG.read_text()
-    new = dest.read_text()
+    combined = "\n".join((PHASE_DIR / f).read_text() for f in fnames)
     section = _extract_section(original, start_re)
     missing = []
     for ln in section:
@@ -105,16 +105,14 @@ def test_phase_content_preserved(start_re, fname):
             continue
         if any(skip in s for skip in REPLACED_SUBSTRINGS):
             continue
-        # Drop the heading level prefix (## vs ###) so we allow rewrapping
         s_no_hash = re.sub(r"^#+\s*", "", s)
-        # Also try after applying each known path remap
         variants = {s, s_no_hash}
         for old, new_path in PATH_REMAPS:
             if old in s:
                 variants.add(s.replace(old, new_path))
                 variants.add(s_no_hash.replace(old, new_path))
-        if not any(v in new for v in variants):
+        if not any(v in combined for v in variants):
             missing.append(s)
     assert not missing, (
-        f"{fname} missing {len(missing)} lines from original phase section.\n"
+        f"{fnames} missing {len(missing)} lines from original phase section.\n"
         f"First 5 missing:\n" + "\n".join(missing[:5]))
