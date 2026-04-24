@@ -133,8 +133,7 @@ python3 "$SKILL_ROOT/references/scripts/workspace.py" update "$WORKSPACE" \
 | next_phase in state.json | Phase skill to load | Subagent label |
 |---|---|---|
 | `3` / `3.5` / `3.6` | `references/phases/phase-3-research-curation.md` | A |
-| `3.7`               | `references/phases/phase-3-7-primary-import.md` | B |
-| `4` / `4.1` / `4.5` | `references/phases/phase-4-import-queryability.md` | C |
+| `4`                 | `references/phases/phase-4-import-and-verify.md` | B |
 | `5`                 | `references/phases/phase-5-analysis.md` | D |
 | `5.5`               | `references/phases/phase-5-5-citation-verification.md` | E |
 | `5.6`               | `references/phases/phase-5-6-cross-examination.md` | F |
