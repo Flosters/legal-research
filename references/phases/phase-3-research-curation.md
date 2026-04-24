@@ -80,28 +80,13 @@ instead of N sequential JSON files, but applies the same dedup and filtering rul
 
 This phase does two things: (1) applies notebooklm's curation rules to remove noise, and (2) builds a lightweight node-tagged Evidence Registry that replaces the raw JSON blobs in Claude's context going forward. This is the primary mechanism for preventing context rot.
 
-### Step A — Deduplication and filtering (per batch, then cross-batch)
+### Step A — Deduplication and filtering
 
-Load each `/tmp/research_[i]_$NB_ID.json`. Each file has structure `{ "tasks": [ { "query": "...", "sources": [...] } ] }`. Extract `tasks[*].sources[*]` from each file.
+Execute the curation script to perform exact and fuzzy deduplication:
 
-Apply these rules per batch first, then cross-batch:
-
-1. **Drop report-only entries** — remove any source where `result_type == 5` and `url` is empty or absent.
-2. **Drop missing URLs** — remove any source with no `url` field or empty `url`.
-3. **Exact-title deduplication** — group sources with identical titles (case-insensitive). Keep the highest-quality domain: `.gov` / `.edu` / official court domains > `.org` > `.com` > law-firm domains. If tied, keep first occurrence.
-4. **Near-duplicate title deduplication** — group sources whose titles share ≥80% of word tokens OR where one title is a substring of the other (after stripping punctuation). Apply same domain-quality tie-breaking.
-5. **Wrong-jurisdiction filter** — drop any source whose URL's hostname ends with a ccTLD belonging to a different country than the target jurisdiction, or whose title contains an explicit foreign-country keyword. **Use netloc-based suffix matching** — never a substring check on the raw URL string.
-
-   ```bash
-   # Wrong-jurisdiction filter — load reference script and run
-   SOURCES_JSON=$(echo "$SOURCES_JSON" | python3 \
-     $SKILL_ROOT/references/scripts/jurisdiction-filter.py \
-     "$JURISDICTION")
-   ```
-
-   `$JURISDICTION` must match a key in `JURISDICTION_TLDS` inside `$SKILL_ROOT/references/scripts/jurisdiction-filter.py` (e.g. `"Argentina"`). To add a new jurisdiction, edit that file.
-
-After per-batch deduplication, merge all batches and apply rules 3–4 again cross-batch.
+```bash
+python3 "$SKILL_ROOT/references/scripts/curate_sources.py" /tmp/research_*_"$NB_ID".json > /tmp/curated_sources.json
+```
 
 ### Step B — Build the Evidence Registry
 
