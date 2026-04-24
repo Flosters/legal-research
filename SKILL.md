@@ -134,8 +134,7 @@ python3 "$SKILL_ROOT/references/scripts/workspace.py" update "$WORKSPACE" \
 |---|---|---|
 | `3` / `3.5` / `3.6` | `references/phases/phase-3-research-curation.md` | A |
 | `4`                 | `references/phases/phase-4-import-and-verify.md` | B |
-| `5`                 | `references/phases/phase-5-analysis.md` | D |
-| `5.5`               | `references/phases/phase-5-5-citation-verification.md` | E |
+| `5`                 | `references/phases/phase-5-analysis-and-verification.md` | D |
 | `5.6`               | `references/phases/phase-5-6-cross-examination.md` | F |
 | `6`                 | `references/phases/phase-6-report.md` | G |
 | `done`              | — (print report path + node coverage; exit) |
