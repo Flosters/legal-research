@@ -13,6 +13,10 @@ loads_reference:
 
 # Phase 6 — Report Assembly
 
+> **GATE 1: Cross-Examination.**
+> **DO NOT draft the report until you have evaluated Temporal Applicability, Reasoning Ladder, Internal Consistency, and Weakest Link.**
+> **DEPENDENCY REQUIREMENT:** The exact output of your Cross-Examination step MUST be pasted verbatim into the "Verification Notes" section of the final Report structure in Step 2. You cannot draft the report without this text.
+
 > **Subagent contract:** retrieve analysis notes on-demand from notebooklm (Step 1),
 > write the HTML report to
 > `$WORKSPACE/../legal-research-<slug>-<YYYY-MM-DD>.html` using the template from
