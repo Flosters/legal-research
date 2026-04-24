@@ -1,5 +1,5 @@
 ---
-name: notebooklm-legal-research-hybrid
+name: legal-research-py
 description: >
   Hybrid agentic reincarnation of notebooklm-legal-research-rhino. Same quality layers
   (verifiable checklist, evidence registry, crawlability checks, NotebookLM citation
@@ -8,7 +8,7 @@ description: >
   scope extraction and Phase 2 notebook creation run inline. Phases 3–6 are handled
   by subagents that load their own phase sub-skill from references/phases/. Resume
   is autonomous via --resume <path>. Requires notebooklm CLI, authenticated.
-  Trigger on /notebooklm-legal-research-hybrid or on any deep-legal-research request.
+  Trigger on /legal-research-py or on any deep-legal-research request.
 ---
 
 # NotebookLM Legal Research — Hybrid Edition
@@ -156,7 +156,7 @@ Load ONLY these files:
 
 Environment variables to use verbatim in shell commands:
   WORKSPACE=<absolute path>
-  SKILL_ROOT=<absolute path to /Users/agustinsilvazambrano/.claude/skills/notebooklm-legal-research-hybrid>
+  SKILL_ROOT=<absolute path to /Users/agustinsilvazambrano/.claude/skills/legal-research>
   NB_ID=<from state.json>
   REPORT_LANGUAGE=<from state.json scope>
   LEGALLY_RELEVANT_DATE=<from state.json scope>
@@ -180,7 +180,7 @@ NEXT=$(jq -r .next_phase "$WORKSPACE/state.json")
 
 ## Error Handling
 
-- **Subagent returns `error:`**: stop the loop, show the error + state.json path, tell the user how to resume: `/notebooklm-legal-research-hybrid resume <state.json path>`.
+- **Subagent returns `error:`**: stop the loop, show the error + state.json path, tell the user how to resume: `/legal-research-py resume <state.json path>`.
 - **Schema validation failure**: the workspace helper raises; treat as fatal; surface to user.
 - **notebooklm CLI not authenticated mid-run**: subagent aborts; user is given resume instructions.
 

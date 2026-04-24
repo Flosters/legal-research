@@ -24,7 +24,7 @@ def test_end_to_end_hybrid(tmp_path):
     )
     out = subprocess.run(
         ["claude", "-p",
-         f"/notebooklm-legal-research-hybrid new {query}",
+         f"/legal-research-py new {query}",
          "--output-dir", str(tmp_path)],
         capture_output=True, text=True, timeout=60 * 90)
     assert out.returncode == 0, out.stderr[-2000:]

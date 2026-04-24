@@ -1,4 +1,4 @@
-# notebooklm-legal-research-hybrid
+# legal-research-py
 
 A Claude Code skill for autonomous, multi-jurisdiction legal research. It produces
 verifiable, citation-backed legal reports by orchestrating a sequence of fresh-context
@@ -112,11 +112,11 @@ pip install notebooklm-py
 notebooklm login
 
 # 3. Install the skill (if not already installed via npx skills)
-# Place this directory at ~/.claude/skills/notebooklm-legal-research-hybrid/
+# Place this directory at ~/.claude/skills/legal-research/
 
 # 4. Verify
 notebooklm status
-python3 -m pytest ~/.claude/skills/notebooklm-legal-research-hybrid/tests/ -v -m "not live"
+python3 -m pytest ~/.claude/skills/legal-research/tests/ -v -m "not live"
 ```
 
 ---
@@ -125,12 +125,12 @@ python3 -m pytest ~/.claude/skills/notebooklm-legal-research-hybrid/tests/ -v -m
 
 **New research session:**
 ```
-/notebooklm-legal-research-hybrid What is the severance pay entitlement for unjustified dismissal under Argentine labour law?
+/legal-research-py What is the severance pay entitlement for unjustified dismissal under Argentine labour law?
 ```
 
 **Resume an interrupted session:**
 ```
-/notebooklm-legal-research-hybrid resume /path/to/research-workspaces/<slug>/state.json
+/legal-research-py resume /path/to/research-workspaces/<slug>/state.json
 ```
 
 The skill asks **one** confirmation question (scope review) and then runs fully autonomously. The HTML report is written to the workspace parent directory on completion.
@@ -160,14 +160,9 @@ research-workspaces/
 | File | Handled by | Est. runtime |
 |---|---|---|
 | `references/phases/phase-3-research-curation.md` | Subagent A | 25–80 min |
-| `references/phases/phase-3-query-runner.md` | Sub-subagents (parallel) | 10–20 min each |
-| `references/phases/phase-3-7-primary-import.md` | Subagent B | 10–30 min |
-| `references/phases/phase-4-import-queryability.md` | Subagent C | 10–20 min |
-| `references/phases/phase-4-spot-check-runner.md` | Sub-subagents (parallel) | 2–8 min each |
-| `references/phases/phase-5-analysis.md` | Subagent D | 15–30 min |
-| `references/phases/phase-5-5-citation-verification.md` | Subagent E | 20–45 min |
-| `references/phases/phase-5-6-cross-examination.md` | Subagent F | 10–20 min |
-| `references/phases/phase-6-report.md` | Subagent G | 5–15 min |
+| `references/phases/phase-4-import-and-verify.md` | Subagent B | 20–50 min |
+| `references/phases/phase-5-analysis-and-verification.md` | Subagent D | 35–75 min |
+| `references/phases/phase-6-report.md` | Subagent F | 15–35 min |
 
 Total wall-clock: **~2–4 hours** depending on jurisdiction complexity and number of sources.
 
@@ -175,11 +170,11 @@ Total wall-clock: **~2–4 hours** depending on jurisdiction complexity and numb
 
 ## How it differs from notebooklm-legal-research-rhino
 
-| Aspect | rhino | hybrid |
+| Aspect | rhino | hybrid (py) |
 |---|---|---|
 | Orchestrator size | ~1040 lines | ≤300 lines |
 | Mid-run user prompts | 3 checkpoint halts | 0 |
-| Phase execution | single long session | 7 fresh-context subagents |
+| Phase execution | single long session | 4 fresh-context subagents |
 | Phase 3 research | N queries × ~12 min serial | max(N queries) ≈ ~12–15 min parallel |
 | Phase 4.1 spot-check | M sources × ~2 min serial | max(M sources) ≈ ~2–4 min parallel |
 | State handoff | in-memory + JSON checkpoint | `state.json` (schema-validated) |
@@ -195,7 +190,7 @@ The original `notebooklm-legal-research-rhino` skill is untouched. If the hybrid
 ## Tests
 
 ```bash
-cd ~/.claude/skills/notebooklm-legal-research-hybrid
+cd ~/.claude/skills/legal-research
 python3 -m pytest -v -m "not live"   # 36 tests, ~2s
 ```
 

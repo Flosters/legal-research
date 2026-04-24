@@ -29,7 +29,7 @@ def test_required_sections_present():
 def test_frontmatter_valid():
     body = SKILL.read_text()
     assert body.startswith("---\n")
-    assert "name: notebooklm-legal-research-hybrid" in body
+    assert "name: legal-research-py" in body
     assert "description:" in body
 
 def test_no_phase_3_through_6_content_inline():
