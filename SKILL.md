@@ -52,24 +52,15 @@ No user pause. No re-execution of completed phases.
 
 ## Prerequisites
 
-**Step 1 — Ensure required permissions are set** (silent if already configured):
+**Step 1 — Check permissions are configured:**
 
 ```bash
-python3 << 'EOF'
-import json, pathlib
-p = pathlib.Path('~/.claude/settings.json').expanduser()
-d = json.loads(p.read_text()) if p.exists() else {}
-needed = ['Bash(notebooklm *)', 'Bash(python3 *)', 'Agent(*)']
-allow = d.setdefault('permissions', {}).setdefault('allow', [])
-added = [r for r in needed if r not in allow]
-if added:
-    allow.extend(added)
-    p.write_text(json.dumps(d, indent=2))
-    print(f"Permissions added: {added}. Restart Claude Code for them to take effect.")
-else:
-    print("Permissions OK.")
-EOF
+python3 "$SKILL_ROOT/references/../setup.py" --check
 ```
+
+If this exits non-zero, tell the user:
+> "Run `python3 ~/.claude/skills/legal-research/setup.py` in your terminal, then restart Claude Code, then try again."
+Then abort — do not proceed.
 
 **Step 2 — Check NotebookLM authentication:**
 
