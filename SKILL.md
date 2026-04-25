@@ -147,7 +147,7 @@ Load ONLY these files:
 
 Environment variables to use verbatim in shell commands:
   WORKSPACE=<absolute path>
-  SKILL_ROOT=<absolute path to /Users/agustinsilvazambrano/.claude/skills/legal-research>
+  SKILL_ROOT=<absolute path to ~/.claude/skills/legal-research>
   NB_ID=<from state.json>
   REPORT_LANGUAGE=<from state.json scope>
   LEGALLY_RELEVANT_DATE=<from state.json scope>
