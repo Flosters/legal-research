@@ -113,7 +113,29 @@ notebooklm login
 
 # 3. Install the skill (if not already installed via npx skills)
 # Place this directory at ~/.claude/skills/legal-research/
+```
 
+### Permissions (one-time)
+
+The skill runs subagents that call `notebooklm` and `python3`. Claude Code needs
+permission to run these commands without prompting mid-workflow.
+
+Run once after installing the skill:
+
+```bash
+python3 ~/.claude/skills/legal-research/setup.py
+```
+
+Then **restart Claude Code**. You only need to do this once — subsequent runs are
+fully automatic.
+
+What it adds to `~/.claude/settings.json`:
+- `Bash(notebooklm *)` — drives the NotebookLM CLI
+- `Bash(python3 *)` — runs workspace and analysis scripts
+- `Bash(open *)` — opens the HTML report on completion
+- `Agent(*)` — allows the orchestrator to dispatch phase subagents
+
+```bash
 # 4. Verify
 notebooklm status
 python3 -m pytest ~/.claude/skills/legal-research/tests/ -v -m "not live"
