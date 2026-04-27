@@ -71,3 +71,38 @@ def test_output_written_to_specified_path():
     assert isinstance(data, list)
     Path(urls_path).unlink(missing_ok=True)
     Path(custom_out).unlink(missing_ok=True)
+
+
+import importlib.util
+from unittest.mock import patch
+
+
+def test_ssl_context_uses_certifi(tmp_path):
+    """check_url() must pass certifi's cafile to ssl.create_default_context."""
+    import certifi
+    import ssl
+
+    cafile_used = []
+    original = ssl.create_default_context
+
+    def capturing_create(**kwargs):
+        cafile_used.append(kwargs.get("cafile"))
+        ctx = original(**kwargs)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+
+    spec = importlib.util.spec_from_file_location("check_urls_mod", str(SCRIPT))
+    mod = importlib.util.module_from_spec(spec)
+
+    with patch("ssl.create_default_context", side_effect=capturing_create):
+        spec.loader.exec_module(mod)
+        try:
+            mod.check_url("https://httpbin.org/status/200", timeout=1)
+        except Exception:
+            pass  # network may be blocked in CI — we only care about the call
+
+    assert cafile_used, "ssl.create_default_context was never called"
+    assert cafile_used[0] == certifi.where(), (
+        f"Expected cafile={certifi.where()!r}, got {cafile_used[0]!r}"
+    )
