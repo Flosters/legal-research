@@ -98,7 +98,16 @@ The skill runs inside [Claude Code](https://claude.ai/code) (CLI or desktop app)
 
 ### Python dependencies (for workspace scripts)
 
-The workspace scripts (`references/scripts/`) use only the Python standard library — no extra packages needed beyond the notebooklm-py CLI itself.
+The workspace scripts (`references/scripts/`) require:
+
+```bash
+pip install -r requirements.txt
+# or individually:
+pip install certifi notebooklm-py
+```
+
+`certifi` provides a cross-platform CA certificate bundle so HTTPS URLs are
+verified correctly on macOS, Linux, and Windows alike.
 
 ---
 
