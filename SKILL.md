@@ -127,9 +127,9 @@ python3 "$SKILL_ROOT/references/scripts/workspace.py" update "$WORKSPACE" \
 | `4`                 | `references/phases/phase-4-import-and-verify.md` | B |
 | `5`                 | `references/phases/phase-5-analysis-and-verification.md` | D |
 | `6`                 | `references/phases/phase-6-report.md` | F |
-| `done`              | — (print report path + node coverage; exit) |
+| `done`              | — (print report path + node coverage; exit) — **do NOT run `open` — Phase 6 subagent already opened the report** |
 
-Dispatch table phase IDs: 3-curation, 3.7, 4-indexing, 5, 5.5, 5.6, 6.
+Dispatch table phase IDs: 3-curation, 4-indexing, 5, 5.5, 5.6, 6.
 
 ---
 
@@ -152,6 +152,11 @@ Environment variables to use verbatim in shell commands:
   REPORT_LANGUAGE=<from state.json scope>
   LEGALLY_RELEVANT_DATE=<from state.json scope>
   JURISDICTION=<from state.json scope>
+  EVIDENCE_REGISTRY=$WORKSPACE/evidence_registry.json
+
+The evidence_registry is stored at $WORKSPACE/evidence_registry.json as a standalone
+file — it is NOT embedded in state.json. Read it directly from that path whenever you
+need source data. Do not look for evidence_registry inside state.json.
 
 Execute every step in the phase skill, in order. On exit, call
 `python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE <last_phase> <next_phase>`
