@@ -106,3 +106,27 @@ def test_ssl_context_uses_certifi(tmp_path):
     assert cafile_used[0] == certifi.where(), (
         f"Expected cafile={certifi.where()!r}, got {cafile_used[0]!r}"
     )
+
+
+def test_fail_threshold_exits_nonzero_when_exceeded():
+    """With --fail-threshold 0, any failure triggers exit 1 (fail_pct > 0)."""
+    r, _ = _run(
+        ["http://definitely-does-not-exist-zzz.invalid"],
+        ["--timeout", "2", "--fail-threshold", "0"],
+    )
+    assert r.returncode == 1
+
+
+def test_fail_threshold_exits_zero_when_empty_url_list():
+    """No URLs → 0% fail rate → exit 0 even with threshold=0."""
+    r, _ = _run([], ["--fail-threshold", "0"])
+    assert r.returncode == 0
+
+
+def test_fail_threshold_not_set_preserves_exit_zero():
+    """Omitting --fail-threshold keeps the existing always-exit-0 behaviour."""
+    r, _ = _run(
+        ["http://definitely-does-not-exist-zzz.invalid"],
+        ["--timeout", "2"],
+    )
+    assert r.returncode == 0

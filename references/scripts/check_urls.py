@@ -2,10 +2,12 @@
 
 Usage:
     python3 check_urls.py <urls_file> [--timeout 10] [--output /tmp/url_check.json]
+                          [--fail-threshold N]
 
 Reads one URL per line from <urls_file>, sends HEAD requests, and reports HTTP
 status codes.  Writes a JSON summary to --output (default: /tmp/url_check_results.json).
-Exits 0 always — callers read the JSON to decide next steps.
+Exits 0 by default.  With --fail-threshold N, exits 1 if the percentage of failed
+URLs exceeds N (0 = fail if any URL fails; 99 = fail only if almost all fail).
 """
 from __future__ import annotations
 import argparse
@@ -36,6 +38,13 @@ def main() -> None:
     ap.add_argument("urls_file", help="Text file with one URL per line")
     ap.add_argument("--timeout", type=int, default=10)
     ap.add_argument("--output", default="/tmp/url_check_results.json")
+    ap.add_argument(
+        "--fail-threshold",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Exit 1 if fail%% > N (0–100). Omit to always exit 0.",
+    )
     args = ap.parse_args()
 
     urls_path = Path(args.urls_file)
@@ -56,7 +65,17 @@ def main() -> None:
     out_path.write_text(json.dumps(results, indent=2))
 
     ok_count = sum(1 for r in results if r["ok"])
+    fail_count = len(results) - ok_count
     print(f"\n{ok_count}/{len(results)} URLs accessible. Results: {out_path}")
+
+    if args.fail_threshold is not None and results:
+        fail_pct = (fail_count / len(results)) * 100
+        if fail_pct > args.fail_threshold:
+            print(
+                f"FAIL: {fail_count}/{len(results)} URLs failed ({fail_pct:.0f}% > threshold {args.fail_threshold}%)",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 if __name__ == "__main__":
