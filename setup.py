@@ -21,6 +21,7 @@ REQUIRED_PERMISSIONS = [
     "Bash(notebooklm *)",
     "Bash(python3 *)",
     "Bash(open *)",
+    "Bash(jq *)",
     "Agent(*)",
 ]
 
