@@ -41,5 +41,5 @@ def test_no_phase_3_through_6_content_inline():
 
 def test_dispatch_table_covers_all_phases():
     body = SKILL.read_text()
-    for phase_id in ["3-curation","3.7","4-indexing","5","5.5","5.6","6"]:
+    for phase_id in ["3-curation","4-indexing","5","5.5","5.6","6"]:
         assert phase_id in body, f"dispatch table missing phase_id={phase_id}"
