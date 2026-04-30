@@ -12,6 +12,22 @@ from jsonschema import Draft202012Validator
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "state.schema.json"
 
 
+def get_notebook_source_count(nb_id: str) -> int:
+    """Return the number of sources currently in the notebook. Returns 0 on any error."""
+    import subprocess, json as _json
+    try:
+        result = subprocess.run(
+            ["notebooklm", "source", "list", "-n", nb_id, "--json"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            return 0
+        sources = _json.loads(result.stdout)
+        return len(sources) if isinstance(sources, list) else 0
+    except Exception:
+        return 0
+
+
 def _validator() -> Draft202012Validator:
     return Draft202012Validator(json.loads(SCHEMA_PATH.read_text()))
 
@@ -47,6 +63,17 @@ def update_state(workspace: Path, patch: dict) -> dict:
 
 
 def mark_phase_complete(workspace: Path, phase: str, next_phase: str) -> dict:
+    if next_phase == "4":
+        state = load_state(workspace)
+        nb_id = state.get("nb_id", "")
+        count = get_notebook_source_count(nb_id)
+        if count > 0:
+            raise SystemExit(
+                f"Phase 3 guard failed: notebook '{nb_id}' has {count} sources after Phase 3. "
+                f"Expected 0. Subagent A wrote directly to the main notebook instead of using "
+                f"temp notebooks. Do not proceed to Phase 4. Delete the notebook sources, then "
+                f"resume with next_phase='3' in state.json."
+            )
     state = load_state(workspace)
     if phase not in state["completed_phases"]:
         state["completed_phases"].append(phase)
