@@ -13,67 +13,33 @@ estimated_runtime_minutes: 25-80
 > **Subagent contract:** You are a fresh-context subagent. On entry:
 > 1. Read workspace state at the path given in the dispatch prompt (`state.json`).
 > 2. Execute every step in this file in order.
-> 3. On exit, call `python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE 3.6 3.7`.
+> 3. On exit, call `python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE 3.6 4`.
 > 4. Return a ≤200-word summary to the orchestrator: queries run, total sources found, sources after curation, node-coverage status.
 > 5. Do **not** load other phase files. Do **not** attempt to run Phase 3.7.
+>
+> **ABORT RULE — read this before executing any step:**
+> - You are allowed to run ONLY commands listed explicitly in this file.
+> - **FORBIDDEN:** `notebooklm source add-research ... -n "$NB_ID"` — never call `add-research` against the main notebook ID (`$NB_ID`) in Phase 3. The main notebook must remain empty until Phase 4. The ONLY permitted way to run research queries — including gap searches — is `python3 "$SKILL_ROOT/references/scripts/run_research.py"`. Violating this will silently corrupt the notebook with hundreds of uncurated duplicates.
+> - If `run_research.py` exits non-zero, return `error: run_research.py failed: <stderr>` immediately. Do NOT check for files. Do NOT run `notebooklm` commands manually. Do NOT try to poll, retry, or diagnose.
+> - NEVER copy from `.claude/projects/*/tool-results/` paths — those files are ephemeral session internals.
+> - NEVER run `nslookup`, `curl`, `for`, `until`, `case`, `sleep`, or `cp` directly. All multi-step logic must go through the provided Python scripts.
+> - If any script exits non-zero: return `error: <script name> failed` to the orchestrator and stop.
 
 ---
 
-## Phase 3 — Deep Research (Parallel Fan-Out)
-
-> Query execution rules for each runner are in
-> `$SKILL_ROOT/references/phases/phase-3-query-runner.md`.
-> Each query angle runs in a dedicated sub-subagent with its own temp notebook,
-> eliminating the `research status` race condition.
+## Phase 3 — Deep Research
 
 Source priority guidance by jurisdiction: load `$SKILL_ROOT/references/source-priority.md`.
 
-### Stage 1 — Create temp notebooks (sequential, 5-second gap)
+### Stage 1 — Execute Research Queries
 
-For each query in `RESEARCH_QUERIES`, create a dedicated temp notebook. The 5-second sleep
-between creations avoids concurrent-creation API rate limits.
-
-```bash
-NB_TEMP_1=$(notebooklm create "research-temp-q1-$NB_ID" --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))")
-sleep 5
-NB_TEMP_2=$(notebooklm create "research-temp-q2-$NB_ID" --json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))")
-sleep 5
-# Repeat for NB_TEMP_3, NB_TEMP_4, NB_TEMP_5 only if N ≥ 3 / 4 / 5
-```
-
-### Stage 2 — Dispatch query runners (parallel)
-
-Dispatch ALL query sub-subagents simultaneously in a single Agent tool call. Each runner
-loads `$SKILL_ROOT/references/phases/phase-3-query-runner.md` and receives:
-
-```
-SKILL_ROOT  = <absolute path to hybrid skill root>
-WORKSPACE   = <absolute path to current workspace>
-NB_ID       = <assigned temp notebook ID for this runner — NB_TEMP_N>
-QUERY_ID    = <query_id from RESEARCH_QUERIES[N]>
-QUERY_STRING = <verbatim query string from RESEARCH_QUERIES[N], in jurisdiction language>
-NODES       = <nodes list from RESEARCH_QUERIES[N]>
-JURISDICTION = <from state.json scope>
-```
-
-Wait for ALL sub-subagent summaries before proceeding to Stage 3.
-
-### Stage 3 — Collect results + cleanup temp notebooks
-
-After all runners return their source lists, delete the temp notebooks to avoid clutter:
+Execute the automated research script which will handle temp notebook creation, query execution, and polling automatically, eliminating bash loop permission issues and race conditions.
 
 ```bash
-notebooklm notebook delete "$NB_TEMP_1" -y
-notebooklm notebook delete "$NB_TEMP_2" -y
-# Repeat for all NB_TEMP_N
-# If the delete command is unavailable, empty each notebook instead:
-#   notebooklm source clean --yes -n "$NB_TEMP_N"
+python3 "$SKILL_ROOT/references/scripts/run_research.py" "$WORKSPACE"
 ```
 
-Hold the N source lists in memory as arrays (one per runner). Proceed to Phase 3.5 to merge
-and curate. The curation logic in Phase 3.5 is unchanged — it receives N source arrays
-instead of N sequential JSON files, but applies the same dedup and filtering rules.
-
+Once the script completes, the results for all queries will be saved in `/tmp/research_q*_$NB_ID.json`. Hold these results in memory and proceed to Phase 3.5 to merge and curate.
 ---
 
 ## Phase 3.5 — Source Curation + Evidence Registry (Rhino)
@@ -129,11 +95,14 @@ For each node in `RESEARCH_CHECKLIST`:
 1. Count how many Evidence Registry entries are tagged to that node.
 2. Check whether the count meets the node's acceptance criterion.
 
-**If any node has zero sources tagged to it**, run one targeted supplemental search before proceeding:
+**If any node has zero sources tagged to it**, run one targeted supplemental search before proceeding.
+**BASH RESTRICTION: never use bash array syntax (`arr=(...)`, `${arr[@]}`).  Use Python for any multi-item iteration.**
 
 ```bash
-notebooklm source add-research "[targeted query for the gap — in jurisdiction language]" --mode deep -n "$NB_ID"
-notebooklm research status --json -n "$NB_ID" > /tmp/research_gap_$NB_ID.json
+python3 "$SKILL_ROOT/references/scripts/run_research.py" \
+  --gap-query "[targeted query for the gap — in jurisdiction language]" \
+  --nb-id "$NB_ID" \
+  --out "/tmp/research_gap_$NB_ID.json"
 ```
 
 Apply Phase 3.5 curation rules to the gap batch and add surviving sources to the Evidence Registry with the appropriate node tag.
@@ -150,16 +119,12 @@ Node coverage:
   Node 4 [Recent developments]: 1 source (T3: 1) ⚠ Thin
 ```
 
-### Autonomous state write (replaces Checkpoint 1 halt)
+### Checkpoint 1 — Node Satisfaction & Curation Halt
 
 Build the evidence-registry JSON (one row per surviving source with fields `id`, `title`, `url`, `tier`, `nodes`, `batch`, `pub_date`, `enforce_date`, `import_status: "pending"`, `queryable_status: "pending"`) and write it to `$WORKSPACE/evidence_registry.json`.
 
-Then persist to `state.json` and advance:
+Then advance to Phase 4 — do NOT prompt the user:
 
 ```bash
-python3 "$SKILL_ROOT/references/scripts/workspace.py" update "$WORKSPACE" \
-  --set evidence_registry="$(cat $WORKSPACE/evidence_registry.json)"
-python3 "$SKILL_ROOT/references/scripts/workspace.py" mark-complete "$WORKSPACE" 3.6 3.7
+python3 "$SKILL_ROOT/references/scripts/workspace.py" mark-complete "$WORKSPACE" 3.6 4
 ```
-
-No user pause. The orchestrator dispatches Subagent B (Phase 3.7) automatically.
