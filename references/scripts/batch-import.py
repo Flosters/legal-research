@@ -2,14 +2,32 @@
 """Batch-import URLs into a NotebookLM notebook using the async Python API.
 Usage: python3 batch-import.py <notebook_id> <url_list_file>
 """
-import asyncio, json, sys, subprocess
+import asyncio, json, subprocess, sys
 from pathlib import Path
 from notebooklm import NotebookLMClient
 from notebooklm.exceptions import RateLimitError
 
 CONCURRENCY = 5
 RATE_LIMIT_BACKOFF = 30
-MIN_BODY_BYTES = 2000  # HTML bodies below this are likely JS-rendered shells
+MIN_BODY_BYTES = 2000
+
+
+def get_existing_urls(nb_id: str) -> set:
+    """Return the set of URLs already in the notebook. Returns empty set on any error."""
+    try:
+        result = subprocess.run(
+            ["notebooklm", "source", "list", "-n", nb_id, "--json"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            return set()
+        sources = json.loads(result.stdout)
+        if isinstance(sources, list):
+            return {s.get("url", "") for s in sources if s.get("url")}
+        return set()
+    except Exception:
+        return set()
+
 
 def is_crawlable(url: str) -> tuple[bool, str]:
     """Return (ok, reason). Checks Content-Type and body size for HTML pages."""
@@ -42,11 +60,24 @@ def is_crawlable(url: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"check-error: {e}"
 
+
 async def main(nb_id, urls):
     imported, failed, skipped = [], [], []
-    # Pre-filter: check crawlability synchronously before async import
-    crawlable = []
+
+    existing = get_existing_urls(nb_id)
+    if existing:
+        print(f"SKIP-EXISTING  {len(existing)} URLs already in notebook", flush=True)
+
+    deduped = []
     for url in urls:
+        if url in existing:
+            skipped.append({"url": url, "reason": "already-in-notebook"})
+            print(f"SKIP-DUP  {url}  [already-in-notebook]", flush=True)
+        else:
+            deduped.append(url)
+
+    crawlable = []
+    for url in deduped:
         ok, reason = is_crawlable(url)
         if ok:
             crawlable.append(url)
@@ -79,6 +110,7 @@ async def main(nb_id, urls):
                     print(f"ERR {url}: {e}", flush=True)
         await asyncio.gather(*[add_one(u) for u in crawlable])
     return {"imported": imported, "failed": failed, "skipped": skipped}
+
 
 if __name__ == "__main__":
     nb_id = sys.argv[1]
