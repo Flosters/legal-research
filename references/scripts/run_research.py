@@ -1,3 +1,4 @@
+import argparse
 import json
 import subprocess
 import sys
@@ -22,17 +23,60 @@ def is_still_pending(status_out: str) -> bool:
         status = data.get("status", "")
         return status in ("in_progress", "pending", "running")
     except (json.JSONDecodeError, AttributeError, TypeError):
-        # Unparseable output: fall back to substring match
         low = status_out.lower()
         return "in_progress" in low or ("pending" in low and "error" not in low)
 
 
+def run_gap_query(query: str, nb_id: str, out_path: str) -> None:
+    """Run a single gap query through a temp notebook; never touches the main notebook."""
+    gap_nb_id = ""
+    try:
+        out = run_cmd(f"notebooklm create 'research-temp-gap-{nb_id}' --json")
+        d = json.loads(out)
+        gap_nb_id = d.get("id") or d.get("notebook_id") or d.get("notebook", {}).get("id", "")
+        time.sleep(2)
+
+        q_esc = query.replace("'", "'\\''")
+        run_cmd(f"notebooklm source add-research '{q_esc}' --mode deep -n '{gap_nb_id}'")
+
+        attempts = 0
+        while attempts < 60:
+            time.sleep(5)
+            attempts += 1
+            status_out = run_cmd(
+                f"notebooklm research status --json -n '{gap_nb_id}'", check=False
+            )
+            if not is_still_pending(status_out):
+                Path(out_path).write_text(status_out)
+                print("Gap query completed.")
+                return
+
+        raise RuntimeError("Gap query timed out after 5 minutes")
+    finally:
+        if gap_nb_id:
+            run_cmd(f"notebooklm delete -n '{gap_nb_id}' -y", check=False)
+
+
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: run_research.py <workspace_dir>")
+    parser = argparse.ArgumentParser(description="Run NotebookLM research queries.")
+    parser.add_argument("workspace", nargs="?", help="Workspace directory (normal mode)")
+    parser.add_argument("--gap-query", help="Single query text (gap mode)")
+    parser.add_argument("--nb-id", help="Main notebook ID (gap mode only)")
+    parser.add_argument("--out", help="Output JSON path (gap mode only)")
+    args = parser.parse_args()
+
+    if args.gap_query:
+        if not args.nb_id or not args.out:
+            print("--nb-id and --out are required with --gap-query", file=sys.stderr)
+            sys.exit(1)
+        run_gap_query(args.gap_query, args.nb_id, args.out)
+        return
+
+    if not args.workspace:
+        print("Usage: run_research.py <workspace_dir>", file=sys.stderr)
         sys.exit(1)
 
-    workspace = Path(sys.argv[1])
+    workspace = Path(args.workspace)
     state_file = workspace / "state.json"
 
     with open(state_file) as f:
@@ -45,7 +89,6 @@ def main():
 
     temp_notebooks = []
 
-    # 1. Create temp notebooks
     for i, q in enumerate(queries):
         query_id = q.get("query_id", i + 1)
         print(f"Creating temp notebook for Query {query_id}...")
@@ -60,13 +103,11 @@ def main():
             raise
 
     try:
-        # 2. Launch research in all temp notebooks
         for q_id, t_nb_id, q_text in temp_notebooks:
             print(f"Starting research for Query {q_id} in {t_nb_id}...")
             q_text_esc = q_text.replace("'", "'\\''")
             run_cmd(f"notebooklm source add-research '{q_text_esc}' --mode deep -n '{t_nb_id}'")
 
-        # 3. Poll for completion (5-minute cap: 60 × 5s)
         pending = list(temp_notebooks)
         print("Polling for research completion...")
         attempts = 0
@@ -93,7 +134,6 @@ def main():
             raise RuntimeError(f"Research timed out after 5 minutes for queries: {', '.join(ids)}")
 
     finally:
-        # 4. Cleanup temp notebooks (best-effort — don't fail the run if delete fails)
         for q_id, t_nb_id, q_text in temp_notebooks:
             print(f"Deleting temp notebook {t_nb_id}...")
             run_cmd(f"notebooklm delete -n '{t_nb_id}' -y", check=False)
