@@ -135,7 +135,7 @@ Dispatch table phase IDs: 3-curation, 4-indexing, 5, 5.5, 5.6, 6.
 
 ## Subagent Dispatch Protocol
 
-For each entry in the Dispatch Table matching `state.next_phase`, dispatch a subagent via the Agent tool with this exact prompt template:
+For each entry in the Dispatch Table matching `state.next_phase`, dispatch a subagent via the Agent tool with `model="sonnet"` and this exact prompt template:
 
 ```
 You are Subagent <LABEL> for the hybrid legal-research skill.
@@ -166,6 +166,20 @@ state.json and return the error — do not prompt the user, do not retry indefin
 ```
 
 Wait for the subagent summary. Print it verbatim to the user. Then:
+
+**If Subagent A (Phase 3) just completed** — before dispatching Subagent B (Phase 4), run this guard:
+
+```bash
+SOURCE_COUNT=$(notebooklm source list -n "$NB_ID" --json 2>/dev/null \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" \
+  2>/dev/null || echo "0")
+```
+
+If `SOURCE_COUNT` is greater than 0, **stop** and tell the user:
+
+> "Phase 3 guard failed: the main notebook already contains $SOURCE_COUNT sources after Phase 3. Expected 0 — Subagent A wrote directly to the main notebook instead of using temp notebooks. Do not proceed to Phase 4. To investigate, inspect the workspace at `$WORKSPACE/state.json`. To restart Phase 3 cleanly, delete the notebook sources and resume with `/legal-research resume $WORKSPACE/state.json` after setting `next_phase` back to `3`."
+
+Do **not** dispatch Subagent B if this guard fails.
 
 ```bash
 NEXT=$(jq -r .next_phase "$WORKSPACE/state.json")
