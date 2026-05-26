@@ -57,6 +57,25 @@ def run_gap_query(query: str, nb_id: str, out_path: str) -> None:
             run_cmd(f"notebooklm delete -n '{gap_nb_id}' -y", check=False)
 
 
+def cleanup_orphaned_notebooks():
+    """Find and delete any temporary notebooks starting with 'research-temp-' using the notebooklm CLI."""
+    print("Checking for orphaned temporary notebooks in NotebookLM...")
+    try:
+        out = run_cmd("notebooklm list --json", check=False)
+        if not out:
+            return
+        data = json.loads(out)
+        notebooks = data.get("notebooks", [])
+        for nb in notebooks:
+            title = nb.get("title", "")
+            nb_id = nb.get("id")
+            if title and title.startswith("research-temp-") and nb_id:
+                print(f"Cleaning up orphaned temp notebook '{title}' (ID: {nb_id})...")
+                run_cmd(f"notebooklm delete -n '{nb_id}' -y", check=False)
+    except Exception as e:
+        print(f"Warning: failed to cleanup orphaned notebooks: {e}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run NotebookLM research queries.")
     parser.add_argument("workspace", nargs="?", help="Workspace directory (normal mode)")
@@ -83,26 +102,25 @@ def main():
         state = json.load(f)
 
     nb_id = state.get("nb_id")
-    queries = state.get("scope", {}).get("research_queries", [])
+    queries = state.get("scope", {}).get("research_queries", []) or state.get("research_queries", [])
 
     print(f"Starting research for {len(queries)} queries...")
 
+    # Run proactive cleanup to ensure no previous failed runs left orphaned temp notebooks
+    cleanup_orphaned_notebooks()
+
     temp_notebooks = []
 
-    for i, q in enumerate(queries):
-        query_id = q.get("query_id", i + 1)
-        print(f"Creating temp notebook for Query {query_id}...")
-        try:
+    try:
+        for i, q in enumerate(queries):
+            query_id = q.get("query_id", i + 1)
+            print(f"Creating temp notebook for Query {query_id}...")
             out = run_cmd(f"notebooklm create 'research-temp-q{query_id}-{nb_id}' --json")
             d = json.loads(out)
             t_nb_id = d.get("id") or d.get("notebook_id") or d.get("notebook", {}).get("id", "")
             temp_notebooks.append((query_id, t_nb_id, q.get("query", "")))
             time.sleep(2)
-        except Exception as e:
-            print(f"ERROR creating notebook for Query {query_id}: {e}", file=sys.stderr)
-            raise
 
-    try:
         for q_id, t_nb_id, q_text in temp_notebooks:
             print(f"Starting research for Query {q_id} in {t_nb_id}...")
             q_text_esc = q_text.replace("'", "'\\''")

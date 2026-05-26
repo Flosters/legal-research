@@ -2,10 +2,12 @@
 
 > **Environment variables available:** `WORKSPACE`, `SKILL_ROOT`, `NB_ID`
 >
-> **FAIL-FAST RULE:** If any script exits non-zero or throws an unexpected exception,
-> write `error: <reason>` as your return value and stop. Do NOT attempt to debug
-> Python library internals. Do NOT use `inspect.signature()`, `python3 -c`, or any
-> interactive introspection. Do NOT retry indefinitely.
+> **ABORT RULE — read this before executing any step:**
+> - You are allowed to run ONLY the `python3` commands listed explicitly in this file.
+> - If any script exits non-zero: return `error: <script name> failed: <stderr>` immediately. Stop. Do NOT debug, introspect, or retry.
+> - NEVER copy from `.claude/projects/*/tool-results/` paths.
+> - NEVER run `nslookup`, `curl`, `for`, `until`, `case`, `sleep`, or `cp` directly.
+> - Do NOT use `inspect.signature()`, `python3 -c`, or any interactive introspection.
 
 ---
 

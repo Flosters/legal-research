@@ -18,11 +18,10 @@ _override = os.environ.get("CLAUDE_SETTINGS_PATH")
 SETTINGS = Path(_override) if _override else Path("~/.claude/settings.json").expanduser()
 
 REQUIRED_PERMISSIONS = [
-    "Bash(notebooklm *)",
-    "Bash(python3 *)",
-    "Bash(open *)",
-    "Bash(jq *)",
+    "Bash(*)",
     "Agent(*)",
+    "Write(/tmp/*)",
+    "Write(/Users/agustinsilvazambrano/.claude/skills/legal-research/*)",
 ]
 
 

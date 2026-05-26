@@ -2,6 +2,10 @@
 
 ### Step 1: Draft Analysis
 Execute IRAC sequence via `notebooklm ask`.
+Use the exact following syntax for every prompt to avoid CLI errors:
+```bash
+notebooklm ask "YOUR_PROMPT_TEXT_HERE" --save-as-note --note-title "NOTE_TITLE_HERE" -n "$NB_ID"
+```
 
 > **GATE 1: Analysis Complete.**
 > **DO NOT PROCEED to Step 2 until all 5 notes (Issue, Rule, Application, Conclusion, Verification) have been successfully saved.**
@@ -9,10 +13,13 @@ Execute IRAC sequence via `notebooklm ask`.
 ### Step 2: Citation Verification
 > **DEPENDENCY REQUIREMENT:** You must extract the citations strictly from the "Rule" and "Application" notes saved in Step 1. If those notes do not exist yet, you cannot perform this step.
 Retrieve "Rule" and "Application" notes. 
-Execute `notebooklm ask` with FOCUSED_VERIFICATION_PROMPT.
+Execute `notebooklm ask` with FOCUSED_VERIFICATION_PROMPT using the same syntax:
+```bash
+notebooklm ask "FOCUSED_VERIFICATION_PROMPT_TEXT_HERE" --save-as-note --note-title "CitationVerification" -n "$NB_ID"
+```
 
 ### Step 3: Mandatory Registry Cross-Check
-Execute the validation script:
+Execute the validation script (it writes `$WORKSPACE/final_citation_log.txt` directly — no bash redirect needed):
 ```bash
-python3 "$SKILL_ROOT/references/scripts/cross_check_citations.py" "$WORKSPACE/state.json" /tmp/citation_log.txt > "$WORKSPACE/final_citation_log.txt"
+python3 "$SKILL_ROOT/references/scripts/cross_check_citations.py" "$WORKSPACE/state.json" /tmp/citation_log.txt "$WORKSPACE/final_citation_log.txt"
 ```

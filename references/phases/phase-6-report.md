@@ -56,7 +56,7 @@ If source-to-section alignment is unclear, retrieve the `SourceOverview` note fr
 - The full disclaimer paragraph
 - The footer text
 
-Write the file to `./legal-research-[topic-slug]-[YYYY-MM-DD].html` using the **HTML Template** from `$SKILL_ROOT/references/output-templates.md`. Fill every `<!-- PLACEHOLDER -->` comment:
+Write the file to `$WORKSPACE/../legal-research-[topic-slug]-[YYYY-MM-DD].html` using the **HTML Template** from `$SKILL_ROOT/references/output-templates.md`. Fill every `<!-- PLACEHOLDER -->` comment:
 
 - **DOC_TITLE** — full document title (topic + jurisdiction)
 - **SHORT_TOPIC** — ≤6-word header label
@@ -81,14 +81,14 @@ Write the file to `./legal-research-[topic-slug]-[YYYY-MM-DD].html` using the **
 ### Step 3 — Open
 
 ```bash
-open ./legal-research-[topic-slug]-[YYYY-MM-DD].html        # macOS
-# xdg-open ./legal-research-[topic-slug]-[YYYY-MM-DD].html  # Linux
+open "$WORKSPACE/../legal-research-[topic-slug]-[YYYY-MM-DD].html"        # macOS
+# xdg-open "$WORKSPACE/../legal-research-[topic-slug]-[YYYY-MM-DD].html"  # Linux
 ```
 
 ### Step 4 — Confirm to user
 
 ```
-Report saved: ./legal-research-[topic-slug]-[YYYY-MM-DD].html
+Report saved: $WORKSPACE/../legal-research-[topic-slug]-[YYYY-MM-DD].html
 Notebook ID:  <id>  (kept for future reference)
 
 Node coverage summary:
