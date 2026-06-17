@@ -1,17 +1,13 @@
 ---
 name: legal-research-py
 description: >
-  Hybrid agentic reincarnation of notebooklm-legal-research-rhino. Same quality layers
-  (verifiable checklist, evidence registry, crawlability checks, NotebookLM citation
-  verification, Claude cross-examination) — but runs end-to-end autonomously by
-  dispatching fresh-context subagents for each phase. Thin orchestrator: only Phase 1
-  scope extraction and Phase 2 notebook creation run inline. Phases 3–6 are handled
-  by subagents that load their own phase sub-skill from references/phases/. Resume
-  is autonomous via --resume <path>. Requires notebooklm CLI, authenticated.
-  Trigger on /legal-research-py or on any deep-legal-research request.
+  Agentic legal research workflow. Runs end-to-end through 6 phases: scope extraction,
+  notebook creation, research curation, source import, analysis, and report generation.
+  Requires notebooklm CLI, authenticated. Trigger with /legal-research or on any
+  deep legal research request.
 ---
 
-# NotebookLM Legal Research — Hybrid Edition
+# NotebookLM Legal Research
 
 This skill is a **router**, not a workflow. Every substantive phase runs in a fresh
 subagent with its own context window. The orchestrator only does two things:
@@ -138,7 +134,7 @@ Dispatch table phase IDs: 3-curation, 4-indexing, 5, 5.5, 5.6, 6.
 For each entry in the Dispatch Table matching `state.next_phase`, dispatch a subagent via the Agent tool with `model="sonnet"` and this exact prompt template:
 
 ```
-You are Subagent <LABEL> for the hybrid legal-research skill.
+You are Subagent <LABEL> for the legal-research skill.
 
 Load ONLY these files:
   - <absolute path to phase skill>
