@@ -33,11 +33,13 @@ Source priority guidance by jurisdiction: load `$SKILL_ROOT/references/source-pr
 
 ### Stage 1 — Execute Research Queries
 
-Execute the automated research script which will handle temp notebook creation, query execution, and polling automatically, eliminating bash loop permission issues and race conditions.
+**YOUR FIRST ACTION:** Run this command immediately. Do not analyze, plan, or summarise first.
 
 ```bash
 python3 "$SKILL_ROOT/references/scripts/run_research.py" "$WORKSPACE"
 ```
+
+This script handles temp notebook creation, query execution, and polling automatically (up to 40 minutes). Wait for it to exit before proceeding.
 
 Once the script completes, the results for all queries will be saved in `/tmp/research_q*_$NB_ID.json`. Hold these results in memory and proceed to Phase 3.5 to merge and curate.
 ---

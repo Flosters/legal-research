@@ -43,3 +43,15 @@ def test_dispatch_table_covers_all_phases():
     body = SKILL.read_text()
     for phase_id in ["3-curation","4-indexing","5","5.5","5.6","6"]:
         assert phase_id in body, f"dispatch table missing phase_id={phase_id}"
+
+
+PHASE3 = ROOT / "references/phases/phase-3-research-curation.md"
+
+def test_phase3_has_immediate_start_directive():
+    """Phase 3 must contain an explicit 'run this first' directive to prevent
+    subagents from reading the file and then stopping without executing."""
+    body = PHASE3.read_text()
+    assert "YOUR FIRST ACTION" in body or "Run this command first" in body, (
+        "phase-3-research-curation.md is missing an immediate-start directive. "
+        "Subagents read the file but then stop — an imperative opening prevents this."
+    )
