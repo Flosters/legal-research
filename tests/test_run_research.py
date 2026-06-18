@@ -239,6 +239,44 @@ def test_main_workspace_mode_still_works(tmp_path):
     assert len(create_calls) == 1
 
 
+def test_add_research_calls_use_no_wait(tmp_path):
+    """Every add-research call must include --no-wait to avoid blocking."""
+    mod = _load()
+    state = {
+        "nb_id": "main-nb-001",
+        "scope": {"research_queries": [
+            {"query_id": 1, "query": "videovigilancia Argentina"},
+            {"query_id": 2, "query": "ley 25326 datos personales"},
+        ]}
+    }
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "state.json").write_text(json.dumps(state))
+
+    calls = []
+
+    def fake_run_cmd(cmd, check=True):
+        calls.append(cmd)
+        if "create" in cmd:
+            return '{"id": "temp-nb-x"}'
+        if "research status" in cmd:
+            return '{"status": "done"}'
+        if "list" in cmd:
+            return '{"notebooks": []}'
+        return ""
+
+    with patch.object(mod, "run_cmd", side_effect=fake_run_cmd), \
+         patch.object(mod, "time") as mock_time, \
+         patch("sys.argv", ["run_research.py", str(ws)]):
+        mock_time.sleep = lambda _: None
+        mod.main()
+
+    add_research_calls = [c for c in calls if "add-research" in c]
+    assert add_research_calls, "No add-research calls found"
+    for cmd in add_research_calls:
+        assert "--no-wait" in cmd, f"Missing --no-wait in: {cmd}"
+
+
 def test_polling_timeout_is_at_least_40_minutes():
     """Guard against regressions to the original 5-min cap."""
     import ast
