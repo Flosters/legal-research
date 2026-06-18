@@ -237,3 +237,21 @@ def test_main_workspace_mode_still_works(tmp_path):
 
     create_calls = [c for c in calls if "create" in c and "research-temp-q" in c]
     assert len(create_calls) == 1
+
+
+def test_polling_timeout_is_at_least_40_minutes():
+    """Guard against regressions to the original 5-min cap."""
+    import ast
+    src = SCRIPT.read_text()
+    tree = ast.parse(src)
+    caps = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Compare):
+            for cmp, right in zip(node.ops, node.comparators):
+                if isinstance(cmp, ast.Lt) and isinstance(right, ast.Constant):
+                    caps.append(right.value)
+    loop_caps = [c for c in caps if isinstance(c, int) and c >= 10]
+    assert loop_caps, "No polling caps found in run_research.py"
+    assert all(c >= 480 for c in loop_caps), (
+        f"Polling cap(s) {loop_caps} are below 480 (40 min at 5s poll interval)"
+    )

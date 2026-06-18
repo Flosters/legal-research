@@ -37,10 +37,10 @@ def run_gap_query(query: str, nb_id: str, out_path: str) -> None:
         time.sleep(2)
 
         q_esc = query.replace("'", "'\\''")
-        run_cmd(f"notebooklm source add-research '{q_esc}' --mode deep -n '{gap_nb_id}'")
+        run_cmd(f"notebooklm source add-research '{q_esc}' --mode deep --no-wait -n '{gap_nb_id}'")
 
         attempts = 0
-        while attempts < 60:
+        while attempts < 480:
             time.sleep(5)
             attempts += 1
             status_out = run_cmd(
@@ -51,7 +51,7 @@ def run_gap_query(query: str, nb_id: str, out_path: str) -> None:
                 print("Gap query completed.")
                 return
 
-        raise RuntimeError("Gap query timed out after 5 minutes")
+        raise RuntimeError("Gap query timed out after 40 minutes")
     finally:
         if gap_nb_id:
             run_cmd(f"notebooklm delete -n '{gap_nb_id}' -y", check=False)
@@ -124,12 +124,13 @@ def main():
         for q_id, t_nb_id, q_text in temp_notebooks:
             print(f"Starting research for Query {q_id} in {t_nb_id}...")
             q_text_esc = q_text.replace("'", "'\\''")
-            run_cmd(f"notebooklm source add-research '{q_text_esc}' --mode deep -n '{t_nb_id}'")
+            run_cmd(f"notebooklm source add-research '{q_text_esc}' --mode deep --no-wait -n '{t_nb_id}'")
+            time.sleep(5)
 
         pending = list(temp_notebooks)
         print("Polling for research completion...")
         attempts = 0
-        while pending and attempts < 60:
+        while pending and attempts < 480:
             time.sleep(5)
             attempts += 1
             still_pending = []
@@ -149,7 +150,7 @@ def main():
 
         if pending:
             ids = [str(q_id) for q_id, _, _ in pending]
-            raise RuntimeError(f"Research timed out after 5 minutes for queries: {', '.join(ids)}")
+            raise RuntimeError(f"Research timed out after 40 minutes for queries: {', '.join(ids)}")
 
     finally:
         for q_id, t_nb_id, q_text in temp_notebooks:
