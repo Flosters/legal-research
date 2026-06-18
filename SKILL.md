@@ -182,9 +182,15 @@ If `SOURCE_COUNT` is greater than 0, **stop** and tell the user:
 
 Do **not** dispatch Subagent B if this guard fails.
 
+Before dispatching each subagent, re-read `state.json`. If the phase you are about to dispatch is already listed in `completed_phases`, a zombie agent ran it — **do not dispatch**. Resume the loop from the actual `next_phase` value instead.
+
 ```bash
+# Before each dispatch: re-read state and guard against zombie advance.
+COMPLETED=$(jq -r '.completed_phases[]' "$WORKSPACE/state.json" 2>/dev/null)
 NEXT=$(jq -r .next_phase "$WORKSPACE/state.json")
-# Loop: look up NEXT in Dispatch Table, dispatch next subagent, or exit on done.
+# If NEXT is already in completed_phases, a zombie ran it — do not dispatch again.
+# Skip to the actual next_phase and resume from there.
+# Loop: look up NEXT in Dispatch Table, dispatch subagent (if not already done), or exit on done.
 ```
 
 ---

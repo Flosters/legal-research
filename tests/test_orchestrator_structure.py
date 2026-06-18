@@ -79,6 +79,20 @@ def test_dispatch_template_has_scope_boundary():
     )
 
 
+def test_orchestrator_has_read_before_dispatch_guard():
+    """Orchestrator loop must re-read completed_phases from state.json before
+    each dispatch and skip if the phase is already done (zombie guard)."""
+    body = SKILL.read_text()
+    assert "completed_phases[]" in body, (
+        "SKILL.md orchestrator loop must read '.completed_phases[]' from state.json "
+        "to guard against zombie agents that already advanced the phase."
+    )
+    assert "do not dispatch" in body.lower(), (
+        "SKILL.md must instruct the orchestrator not to dispatch if the phase is "
+        "already in completed_phases."
+    )
+
+
 def test_phase3_has_immediate_start_directive():
     """Phase 3 must contain an explicit 'run this first' directive to prevent
     subagents from reading the file and then stopping without executing."""
