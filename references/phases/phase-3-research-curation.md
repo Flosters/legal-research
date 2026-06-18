@@ -125,7 +125,7 @@ Node coverage:
 
 Build the evidence-registry JSON (one row per surviving source with fields `id`, `title`, `url`, `tier`, `nodes`, `batch`, `pub_date`, `enforce_date`, `import_status: "pending"`, `queryable_status: "pending"`) and write it to `$WORKSPACE/evidence_registry.json`.
 
-Then advance to Phase 4 — do NOT prompt the user:
+STOP. Write state only — do not begin Phase 4. Return immediately to the orchestrator:
 
 ```bash
 python3 "$SKILL_ROOT/references/scripts/workspace.py" mark-complete "$WORKSPACE" 3.6 4

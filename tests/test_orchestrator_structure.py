@@ -56,6 +56,19 @@ def test_dispatch_template_has_immediate_start_directive():
 
 PHASE3 = ROOT / "references/phases/phase-3-research-curation.md"
 
+def test_phase3_checkpoint_has_stop_language():
+    """Checkpoint 1 must not use 'advance to Phase 4' — that phrase caused
+    zombie agents to continue running Phase 4 instead of stopping."""
+    body = PHASE3.read_text()
+    assert "advance to Phase 4" not in body, (
+        "Ambiguous 'advance to Phase 4' found in phase-3 Checkpoint 1. "
+        "Replace with explicit STOP language so subagents halt after mark-complete."
+    )
+    assert any(kw in body for kw in ["STOP.", "return immediately", "return to the orchestrator"]), (
+        "phase-3 Checkpoint 1 must include STOP / return-to-orchestrator directive."
+    )
+
+
 def test_phase3_has_immediate_start_directive():
     """Phase 3 must contain an explicit 'run this first' directive to prevent
     subagents from reading the file and then stopping without executing."""
