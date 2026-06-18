@@ -154,9 +154,11 @@ The evidence_registry is stored at $WORKSPACE/evidence_registry.json as a standa
 file — it is NOT embedded in state.json. Read it directly from that path whenever you
 need source data. Do not look for evidence_registry inside state.json.
 
-Execute every step in the phase skill, in order. On exit, call
-`python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE <last_phase> <next_phase>`
-then return a ≤200-word summary to the orchestrator. Do not load other phase files.
+YOUR SCOPE IS THIS PHASE ONLY. Execute every step in the phase skill, in order.
+On exit, call mark-complete and return a ≤200-word summary to the orchestrator.
+After returning your summary, you are done — do not attempt to read, start, or
+infer what the next phase requires. The orchestrator dispatches each phase separately.
+Do not load other phase files.
 **Start immediately.** YOUR FIRST ACTION is to run the first bash command in Stage 1
 of the phase file. Do not summarise, plan, or ask questions first. Execute, then report.
 

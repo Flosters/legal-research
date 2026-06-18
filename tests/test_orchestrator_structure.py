@@ -69,6 +69,16 @@ def test_phase3_checkpoint_has_stop_language():
     )
 
 
+def test_dispatch_template_has_scope_boundary():
+    """Dispatch prompt must explicitly scope the subagent to one phase only,
+    forbidding execution of the next phase (not just file loading)."""
+    body = SKILL.read_text()
+    assert "THIS PHASE ONLY" in body, (
+        "SKILL.md dispatch template is missing 'THIS PHASE ONLY' scope boundary. "
+        "Forbidding file loading is insufficient — subagents can continue without loading files."
+    )
+
+
 def test_phase3_has_immediate_start_directive():
     """Phase 3 must contain an explicit 'run this first' directive to prevent
     subagents from reading the file and then stopping without executing."""
