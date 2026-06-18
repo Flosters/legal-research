@@ -45,6 +45,15 @@ def test_dispatch_table_covers_all_phases():
         assert phase_id in body, f"dispatch table missing phase_id={phase_id}"
 
 
+def test_dispatch_template_has_immediate_start_directive():
+    """Dispatch prompt must contain an explicit start directive so subagents
+    don't stall after reading the phase file."""
+    body = SKILL.read_text()
+    assert "YOUR FIRST ACTION" in body or "Start immediately" in body, (
+        "SKILL.md dispatch template missing imperative start directive."
+    )
+
+
 PHASE3 = ROOT / "references/phases/phase-3-research-curation.md"
 
 def test_phase3_has_immediate_start_directive():

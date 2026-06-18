@@ -157,6 +157,9 @@ need source data. Do not look for evidence_registry inside state.json.
 Execute every step in the phase skill, in order. On exit, call
 `python3 $SKILL_ROOT/references/scripts/workspace.py mark-complete $WORKSPACE <last_phase> <next_phase>`
 then return a ≤200-word summary to the orchestrator. Do not load other phase files.
+**Start immediately.** YOUR FIRST ACTION is to run the first bash command in Stage 1
+of the phase file. Do not summarise, plan, or ask questions first. Execute, then report.
+
 If any step fails after the documented fallback ladder, write `error: <reason>` to
 state.json and return the error — do not prompt the user, do not retry indefinitely.
 ```
