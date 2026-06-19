@@ -190,31 +190,12 @@ research-workspaces/
 
 | File | Handled by | Est. runtime |
 |---|---|---|
-| `references/phases/phase-3-research-curation.md` | Subagent A | 25–80 min |
-| `references/phases/phase-4-import-and-verify.md` | Subagent B | 20–50 min |
-| `references/phases/phase-5-analysis-and-verification.md` | Subagent D | 35–75 min |
-| `references/phases/phase-6-report.md` | Subagent F | 15–35 min |
+| `references/phases/phase-3-research-curation.md` | Subagent A | 15–35 min |
+| `references/phases/phase-4-import-and-verify.md` | Subagent B | 10–20 min |
+| `references/phases/phase-5-analysis-and-verification.md` | Subagent D | 8–20 min |
+| `references/phases/phase-6-report.md` | Subagent F | 10–20 min |
 
-Total wall-clock: **~2–4 hours** depending on jurisdiction complexity and number of sources.
-
----
-
-## How it differs from notebooklm-legal-research-rhino
-
-| Aspect | rhino | hybrid (py) |
-|---|---|---|
-| Orchestrator size | ~1040 lines | ≤300 lines |
-| Mid-run user prompts | 3 checkpoint halts | 0 |
-| Phase execution | single long session | 4 fresh-context subagents |
-| Phase 3 research | N queries × ~12 min serial | max(N queries) ≈ ~12–15 min parallel |
-| Phase 4.1 spot-check | M sources × ~2 min serial | max(M sources) ≈ ~2–4 min parallel |
-| State handoff | in-memory + JSON checkpoint | `state.json` (schema-validated) |
-| Reference loading | most loaded upfront | per-subagent, on demand |
-
-The original `notebooklm-legal-research-rhino` skill is untouched. If the hybrid misbehaves:
-```
-/notebooklm-legal-research-rhino <query>
-```
+Total wall-clock: **~55–90 min** for a typical 4-query run. Phase 3 dominates and scales with the number of queries; Phase 4 scales with source count.
 
 ---
 
